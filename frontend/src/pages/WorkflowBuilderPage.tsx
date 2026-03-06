@@ -13,6 +13,7 @@ import {
     CheckCircle, XCircle, FolderOpen,
 } from 'lucide-react'
 import { useCallback, useState, useEffect } from 'react'
+import type React from 'react'
 import {
     ReactFlow, Controls, Background,
     applyNodeChanges, applyEdgeChanges, addEdge, ReactFlowProvider,
@@ -607,11 +608,304 @@ function WorkflowBuilder() {
     )
 }
 
-function WorkflowBuilderPage() {
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB B — AI Workflow Designer
+// ─────────────────────────────────────────────────────────────────────────────
+function AIWorkflowDesigner() {
+    const [prompt, setPrompt] = useState('')
+    const [nodes, setNodes] = useState<Node[]>([])
+    const [edges, setEdges] = useState<Edge[]>([])
+    const [generating, setGenerating] = useState(false)
+    const [error, setError] = useState('')
+    const [workflowName, setWorkflowName] = useState('AI Generated Workflow')
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+    const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [])
+    const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [])
+    const onConnect = useCallback((params: Connection) =>
+        setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } }, eds)), [])
+
+    const handleGenerate = async () => {
+        if (!prompt.trim()) return
+        setGenerating(true)
+        setError('')
+        try {
+            const res = await fetch('http://localhost:8000/api/v1/workflows/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.detail || 'Generation failed')
+            const flow = data.flow
+            setNodes(flow.nodes || [])
+            setEdges(flow.edges || [])
+            setWorkflowName(`AI: ${prompt.slice(0, 40)}`)
+        } catch (e: any) {
+            setError(e.message || 'Generation failed')
+        } finally {
+            setGenerating(false)
+        }
+    }
+
+    const handleSave = async () => {
+        if (!nodes.length) return
+        setSaveStatus('saving')
+        try {
+            const res = await fetch('http://localhost:8000/api/v1/workflows', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: workflowName, flow_definition: JSON.stringify({ nodes, edges }) }),
+            })
+            if (!res.ok) throw new Error()
+            setSaveStatus('saved')
+            setTimeout(() => setSaveStatus('idle'), 2500)
+        } catch {
+            setSaveStatus('error')
+            setTimeout(() => setSaveStatus('idle'), 2500)
+        }
+    }
+
+    const saveLabel = saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved!' : saveStatus === 'error' ? '✗ Error' : 'Save Workflow'
+
     return (
-        <ReactFlowProvider>
-            <WorkflowBuilder />
-        </ReactFlowProvider>
+        <div className="ai-designer-page">
+            <div className="ai-designer-prompt-bar glass-panel">
+                <div className="ai-prompt-header">
+                    <Brain size={18} style={{ color: '#6366f1' }} />
+                    <span className="ai-prompt-title">Describe your outreach workflow</span>
+                </div>
+                <div className="ai-prompt-input-row">
+                    <textarea
+                        className="ai-prompt-textarea"
+                        rows={3}
+                        placeholder="e.g. Build a 4-step re-engagement sequence for startup founders who attended our webinar but haven't booked a demo. Include a delay, a personalized follow-up, and route on their reply intent."
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) handleGenerate() }}
+                    />
+                    <div className="ai-prompt-actions">
+                        <button className="btn-primary" onClick={handleGenerate} disabled={generating || !prompt.trim()} style={{ minWidth: '140px' }}>
+                            {generating ? <><Loader size={14} className="spin" /> Generating…</> : <><Wand2 size={14} /> Generate</>}
+                        </button>
+                        {nodes.length > 0 && (
+                            <button className="btn-secondary" onClick={handleSave} disabled={saveStatus === 'saving'}>
+                                <Save size={14} /> {saveLabel}
+                            </button>
+                        )}
+                    </div>
+                </div>
+                {error && <p style={{ color: '#ef4444', fontSize: '12px', margin: '6px 0 0' }}>⚠ {error}</p>}
+                <p className="ai-prompt-hint">Tip: Describe the audience, goal, and any branching logic. Press ⌘+Enter to generate.</p>
+            </div>
+
+            <div className="ai-designer-canvas glass-panel">
+                {nodes.length === 0 ? (
+                    <div className="canvas-empty-overlay">
+                        <div className="canvas-empty">
+                            <Wand2 size={40} style={{ color: '#6366f1', marginBottom: '16px' }} />
+                            <h3>Your workflow will appear here</h3>
+                            <p>Describe what you want above and click Generate. The AI will build the node graph for you.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        nodeTypes={nodeTypes}
+                        fitView
+                        defaultEdgeOptions={{ style: { stroke: '#6366f1', strokeWidth: 2 }, animated: true }}
+                    >
+                        <Background color="#1e293b" gap={24} size={1} />
+                        <Controls />
+                    </ReactFlow>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB C — A/B Testing
+// ─────────────────────────────────────────────────────────────────────────────
+function ABTestingPanel() {
+    const [workflows, setWorkflows] = useState<{ id: number; name: string }[]>([])
+    const [selectedId, setSelectedId] = useState<number | null>(null)
+    const [promptA, setPromptA] = useState('Write a warm, friendly introduction email referencing their industry challenges. Focus on how we can save them time.')
+    const [promptB, setPromptB] = useState('Write an urgent, ROI-focused outreach email. Lead with a specific business result we achieved for a similar company.')
+    const [running, setRunning] = useState(false)
+    const [result, setResult] = useState<any>(null)
+    const [error, setError] = useState('')
+
+    useEffect(() => {
+        fetch('http://localhost:8000/api/v1/workflows')
+            .then(r => r.json())
+            .then(data => { setWorkflows(data); if (data.length) setSelectedId(data[0].id) })
+            .catch(() => { })
+    }, [])
+
+    const handleRun = async () => {
+        if (!selectedId) return
+        setRunning(true)
+        setError('')
+        setResult(null)
+        try {
+            const res = await fetch(`http://localhost:8000/api/v1/workflows/${selectedId}/ab-test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt_a: promptA, prompt_b: promptB }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.detail || 'A/B test failed')
+            setResult(data)
+        } catch (e: any) {
+            setError(e.message || 'A/B test failed')
+        } finally {
+            setRunning(false)
+        }
+    }
+
+    const winnerA = result?.verdict?.toLowerCase().includes('winner: email a')
+    const winnerB = result?.verdict?.toLowerCase().includes('winner: email b')
+
+    return (
+        <div className="ab-page">
+            {/* Controls */}
+            <div className="ab-controls glass-panel">
+                <div className="ab-controls-row">
+                    <div className="ab-control-group">
+                        <label className="ab-label">Workflow to test</label>
+                        <select
+                            className="config-input"
+                            value={selectedId ?? ''}
+                            onChange={(e) => setSelectedId(Number(e.target.value))}
+                        >
+                            {workflows.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select>
+                    </div>
+                    <button
+                        className={`btn-run ${running ? 'btn-run--running' : ''}`}
+                        onClick={handleRun}
+                        disabled={running || !selectedId}
+                    >
+                        {running ? <><Loader size={14} className="spin" /> Running A/B…</> : <><Play size={14} /> Run A/B Test</>}
+                    </button>
+                </div>
+                {error && <p style={{ color: '#ef4444', fontSize: '12px', margin: '8px 0 0' }}>⚠ {error}</p>}
+            </div>
+
+            {/* Prompt Editor Row */}
+            <div className="ab-prompts-row">
+                <div className="ab-prompt-card glass-panel ab-prompt-card--a">
+                    <div className="ab-prompt-header">
+                        <span className="ab-badge ab-badge--a">A</span>
+                        <span>Prompt Variant A</span>
+                    </div>
+                    <textarea
+                        className="ab-prompt-textarea"
+                        rows={4}
+                        value={promptA}
+                        onChange={(e) => setPromptA(e.target.value)}
+                        placeholder="Describe how Email A should sound…"
+                    />
+                    {result && (
+                        <div className={`ab-message-output ${winnerA ? 'ab-message-output--winner' : ''}`}>
+                            {winnerA && <div className="ab-winner-badge">🏆 Winner</div>}
+                            <p className="ab-output-label">Generated Email A</p>
+                            <pre className="ab-message-text">{result.message_a || '(no ai_compose node in workflow)'}</pre>
+                        </div>
+                    )}
+                </div>
+
+                <div className="ab-vs-divider">VS</div>
+
+                <div className="ab-prompt-card glass-panel ab-prompt-card--b">
+                    <div className="ab-prompt-header">
+                        <span className="ab-badge ab-badge--b">B</span>
+                        <span>Prompt Variant B</span>
+                    </div>
+                    <textarea
+                        className="ab-prompt-textarea"
+                        rows={4}
+                        value={promptB}
+                        onChange={(e) => setPromptB(e.target.value)}
+                        placeholder="Describe how Email B should sound…"
+                    />
+                    {result && (
+                        <div className={`ab-message-output ${winnerB ? 'ab-message-output--winner' : ''}`}>
+                            {winnerB && <div className="ab-winner-badge">🏆 Winner</div>}
+                            <p className="ab-output-label">Generated Email B</p>
+                            <pre className="ab-message-text">{result.message_b || '(no ai_compose node in workflow)'}</pre>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* AI Verdict */}
+            {result?.verdict && (
+                <div className="ab-verdict glass-panel">
+                    <div className="ab-verdict-header">
+                        <Brain size={16} style={{ color: '#6366f1' }} />
+                        <span>AI Verdict</span>
+                    </div>
+                    <p className="ab-verdict-text">{result.verdict}</p>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page shell with 3 tabs
+// ─────────────────────────────────────────────────────────────────────────────
+type Tab = 'editor' | 'designer' | 'abtest'
+
+function WorkflowBuilderPage() {
+    const [activeTab, setActiveTab] = useState<Tab>('editor')
+
+    const TABS: { id: Tab; icon: React.ReactNode; label: string; sub: string }[] = [
+        { id: 'editor', icon: <GitBranch size={15} />, label: 'Workflow Editor', sub: 'Build & test visually' },
+        { id: 'designer', icon: <Wand2 size={15} />, label: 'AI Workflow Designer', sub: 'Generate from a prompt' },
+        { id: 'abtest', icon: <BarChart2 size={15} />, label: 'A/B Testing', sub: 'Compare prompt variants' },
+    ]
+
+    return (
+        <div className="wb-tabs-shell">
+            {/* Tab Navigation */}
+            <div className="wb-tab-nav glass-panel">
+                {TABS.map(tab => (
+                    <button
+                        key={tab.id}
+                        className={`wb-tab-btn ${activeTab === tab.id ? 'wb-tab-btn--active' : ''}`}
+                        onClick={() => setActiveTab(tab.id)}
+                    >
+                        <span className="wb-tab-icon">{tab.icon}</span>
+                        <span className="wb-tab-text">
+                            <span className="wb-tab-label">{tab.label}</span>
+                            <span className="wb-tab-sub">{tab.sub}</span>
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="wb-tab-content">
+                {activeTab === 'editor' && (
+                    <ReactFlowProvider>
+                        <WorkflowBuilder />
+                    </ReactFlowProvider>
+                )}
+                {activeTab === 'designer' && (
+                    <ReactFlowProvider>
+                        <AIWorkflowDesigner />
+                    </ReactFlowProvider>
+                )}
+                {activeTab === 'abtest' && <ABTestingPanel />}
+            </div>
+        </div>
     )
 }
 

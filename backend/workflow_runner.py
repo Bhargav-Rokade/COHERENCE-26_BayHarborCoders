@@ -121,6 +121,7 @@ def handle_ai_compose(cfg: dict, state: dict, api_key: str, kb: dict, **_) -> di
     goal = cfg.get("goal", "intro")
     tone = cfg.get("tone", "professional")
     length = cfg.get("length", "short")
+    custom_prompt = cfg.get("custom_prompt", "")   # injected by A/B tester
 
     # Use rich structured KB fields for sharper prompts
     company_desc = kb.get("company_description", "") or kb.get("raw", "")
@@ -138,13 +139,23 @@ def handle_ai_compose(cfg: dict, state: dict, api_key: str, kb: dict, **_) -> di
     if target_customers:
         context_block += f"\nIdeal Customer: {target_customers}"
 
-    prompt = (
-        f"Write a {length} cold outreach email for goal: '{goal}'. Tone: {tone}.\n"
-        f"Lead: {lead.get('name','the lead')} — {lead.get('title','')} at {lead.get('company','')} "
-        f"(Industry: {lead.get('industry','')}).\n"
-        f"Sender context:{context_block if context_block else ' Not provided.'}\n\n"
-        "Write ONLY the email body. No subject line. Start directly."
-    )
+    if custom_prompt:
+        # A/B test mode: the custom_prompt IS the instruction
+        prompt = (
+            f"{custom_prompt}\n\n"
+            f"Lead: {lead.get('name','the lead')} — {lead.get('title','')} at {lead.get('company','')} "
+            f"(Industry: {lead.get('industry','')}).\n"
+            f"Sender context:{context_block if context_block else ' Not provided.'}\n\n"
+            "Write ONLY the email body. No subject line. Start directly."
+        )
+    else:
+        prompt = (
+            f"Write a {length} cold outreach email for goal: '{goal}'. Tone: {tone}.\n"
+            f"Lead: {lead.get('name','the lead')} — {lead.get('title','')} at {lead.get('company','')} "
+            f"(Industry: {lead.get('industry','')}).\n"
+            f"Sender context:{context_block if context_block else ' Not provided.'}\n\n"
+            "Write ONLY the email body. No subject line. Start directly."
+        )
 
     message = _call_openai(prompt, api_key)
     state["message"] = message
