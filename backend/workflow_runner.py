@@ -101,10 +101,15 @@ def handle_ai_compose(cfg: dict, state: dict, api_key: str, kb: str, **_) -> dic
     goal = cfg.get("goal", "intro")
     tone = cfg.get("tone", "friendly")
     length = cfg.get("length", "short")
+
+    # Build structured context from KB (supports both structured and raw format)
+    kb_context = kb[:800] if kb else "N/A"
+
     prompt = (
         f"Write a {length} {tone} cold outreach email for the goal: '{goal}'.\n"
         f"Lead: {lead.get('name','the lead')} — {lead.get('title','')} at {lead.get('company','')} ({lead.get('industry','')}).\n"
-        f"Company context: {kb[:600] if kb else 'N/A'}\n"
+        f"Sender's company info:\n{kb_context}\n\n"
+        "Use the company context above to personalize the email. "
         "Output ONLY the email body, no subject line."
     )
     message = _call_openai(prompt, api_key)

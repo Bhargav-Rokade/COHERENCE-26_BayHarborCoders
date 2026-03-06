@@ -7,6 +7,14 @@ class CompanySettings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     knowledge_base_text = Column(Text, nullable=True)
+
+    # Structured knowledge base fields
+    company_description = Column(Text, nullable=True, default="")
+    product_offering = Column(Text, nullable=True, default="")
+    target_customers = Column(Text, nullable=True, default="")
+    value_proposition = Column(Text, nullable=True, default="")
+    messaging_tone = Column(String(200), nullable=True, default="")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

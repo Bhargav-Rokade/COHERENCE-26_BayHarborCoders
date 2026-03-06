@@ -17,13 +17,12 @@ from database import engine, get_db, Base
 from models import CompanySettings, Workflow
 from workflow_runner import run_workflow
 from leads_router import router as leads_router
+from knowledge_base_router import router as kb_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 # Pydantic schemas
-class KnowledgeBaseUpdate(BaseModel):
-    content: str
 
 class WorkflowCreate(BaseModel):
     name: str
@@ -62,6 +61,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(leads_router)
+app.include_router(kb_router)
 
 
 # ---------------------
@@ -87,34 +87,7 @@ def api_status():
         },
     }
 
-# ---------------------
-# Knowledge Base API
-# ---------------------
-@app.get("/api/v1/knowledge-base")
-def get_knowledge_base(db: Session = Depends(get_db)):
-    """Fetch the company knowledge base."""
-    # For MVP, we'll just use the first settings row
-    settings = db.query(CompanySettings).first()
-    if not settings:
-        return {"content": ""}
-    return {"content": settings.knowledge_base_text or ""}
-
-@app.post("/api/v1/knowledge-base")
-def update_knowledge_base(data: KnowledgeBaseUpdate, db: Session = Depends(get_db)):
-    """Update the company knowledge base."""
-    settings = db.query(CompanySettings).first()
-    
-    if not settings:
-        # Create new if it doesn't exist
-        settings = CompanySettings(knowledge_base_text=data.content)
-        db.add(settings)
-    else:
-        # Update existing
-        settings.knowledge_base_text = data.content
-        
-    db.commit()
-    db.refresh(settings)
-    return {"status": "success", "content": settings.knowledge_base_text}
+# Knowledge Base API — now handled by knowledge_base_router.py
 
 # ---------------------
 # Workflows API
