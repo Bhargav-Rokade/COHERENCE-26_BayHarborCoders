@@ -12,6 +12,7 @@ import {
     Users, Upload, Search, Trash2, BarChart2,
     Sparkles, AlertCircle, CheckCircle, XCircle, Loader2, ChevronDown
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import './LeadsPage.css'
 
 const API_BASE = 'http://localhost:8000/api/v1/leads'
@@ -447,8 +448,10 @@ export default function LeadsPage() {
                         )}
 
                         {campaignIdeas && (
-                            <div className="campaign-output">
-                                <pre className="campaign-pre">{campaignIdeas}</pre>
+                            <div className="campaign-output markdown-body">
+                                <ReactMarkdown>
+                                    {campaignIdeas}
+                                </ReactMarkdown>
                             </div>
                         )}
                     </div>

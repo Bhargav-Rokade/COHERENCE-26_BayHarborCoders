@@ -271,9 +271,8 @@ Be specific, actionable, and professional."""
 
     client = OpenAI(api_key=body.openai_api_key)
     response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
+        model="gpt-5-nano",
+        messages=[{"role": "user", "content": prompt}]
     )
 
     idea_text = response.choices[0].message.content
