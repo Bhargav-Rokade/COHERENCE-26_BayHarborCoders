@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useState, useEffect } from 'react'
 import type React from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
     ReactFlow, Controls, Background,
     applyNodeChanges, applyEdgeChanges, addEdge, ReactFlowProvider,
@@ -159,6 +161,18 @@ function WorkflowBuilder() {
             const res = await fetch('http://localhost:8000/api/v1/workflows')
             if (res.ok) setSavedWorkflows(await res.json())
         } catch { /* ignore */ }
+    }
+
+    const deleteWorkflow = async (id: number, e: React.MouseEvent) => {
+        e.stopPropagation()   // don't trigger handleLoad
+        if (!confirm('Delete this workflow?')) return
+        await fetch(`http://localhost:8000/api/v1/workflows/${id}`, { method: 'DELETE' })
+        // If we deleted the currently loaded workflow, reset state
+        if (workflowId === id) {
+            setNodes([]); setEdges([]); setWorkflowName('Untitled Workflow')
+            setWorkflowId(null); setRunLog([]); setShowLog(false)
+        }
+        fetchWorkflowList()
     }
 
     const fetchLeads = async () => {
@@ -366,6 +380,11 @@ function WorkflowBuilder() {
                                         <div key={wf.id} className="wb-dropdown-item" onClick={() => handleLoad(wf.id, wf.name)}>
                                             <span className="wf-name">{wf.name}</span>
                                             <span className="wf-date">{wf.updated_at.slice(0, 10)}</span>
+                                            <button
+                                                className="wf-delete-btn"
+                                                onClick={(e) => deleteWorkflow(wf.id, e)}
+                                                title="Delete workflow"
+                                            >✕</button>
                                         </div>
                                     ))
                                 }
@@ -851,7 +870,9 @@ function ABTestingPanel() {
                         <Brain size={16} style={{ color: '#6366f1' }} />
                         <span>AI Verdict</span>
                     </div>
-                    <p className="ab-verdict-text">{result.verdict}</p>
+                    <div className="ab-verdict-text markdown-body">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.verdict}</ReactMarkdown>
+                    </div>
                 </div>
             )}
         </div>

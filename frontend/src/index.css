@@ -361,3 +361,142 @@ tr:hover td {
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+
+/* ─── Markdown output (react-markdown) ─── */
+.markdown-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin: 12px 0 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.markdown-body h1 {
+  font-size: 17px;
+}
+
+.markdown-body h2 {
+  font-size: 15px;
+}
+
+.markdown-body h3,
+.markdown-body h4 {
+  font-size: 13px;
+}
+
+.markdown-body p {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 20px;
+  margin: 0 0 8px;
+}
+
+.markdown-body li {
+  margin-bottom: 3px;
+  color: var(--text-primary);
+}
+
+.markdown-body strong {
+  font-weight: 700;
+}
+
+.markdown-body em {
+  font-style: italic;
+}
+
+.markdown-body code {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-family: 'Fira Mono', monospace;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 12px 0;
+}
+
+/* ─── Workflow Open dropdown ─── */
+.wb-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 280px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 999;
+  overflow: hidden;
+}
+
+.wb-dropdown-empty {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.wb-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.wb-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.wb-dropdown-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.wf-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.wf-delete-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.wf-delete-btn:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
