@@ -74,13 +74,8 @@ const NODE_CONFIG_FIELDS: Record<string, Array<{ key: string; label: string; typ
     trigger: [
         { key: 'trigger_type', label: 'Trigger Type', type: 'select', options: ['manual', 'new_lead', 'test_run'] },
     ],
-    load_lead: [
-        { key: 'name', label: 'Lead Name', type: 'text', placeholder: 'Alex Johnson' },
-        { key: 'company', label: 'Company', type: 'text', placeholder: 'Acme Corp' },
-        { key: 'title', label: 'Title', type: 'text', placeholder: 'CTO' },
-        { key: 'industry', label: 'Industry', type: 'text', placeholder: 'SaaS' },
-        { key: 'email', label: 'Email', type: 'text', placeholder: 'alex@acme.com' },
-    ],
+    // Note: load_lead uses a special lead picker UI (see config panel render logic)
+    load_lead: [],
     ai_compose: [
         { key: 'goal', label: 'Goal', type: 'select', options: ['intro', 'followup', 'meeting_request', 'demo_invite'] },
         { key: 'tone', label: 'Tone', type: 'select', options: ['friendly', 'professional', 'technical', 'casual'] },
@@ -146,18 +141,29 @@ function WorkflowBuilder() {
     const [expandedLogItems, setExpandedLogItems] = useState<Set<number>>(new Set())
     const [showLog, setShowLog] = useState(false)
 
+    // Leads from DB (for lead picker)
+    const [dbLeads, setDbLeads] = useState<{ id: number; first_name: string; last_name: string; company: string; job_title: string; email: string }[]>([])
+
     // Saved workflows list
     const [savedWorkflows, setSavedWorkflows] = useState<{ id: number; name: string; updated_at: string }[]>([])
     const [showWorkflowList, setShowWorkflowList] = useState(false)
 
     useEffect(() => {
         fetchWorkflowList()
+        fetchLeads()
     }, [])
 
     const fetchWorkflowList = async () => {
         try {
             const res = await fetch('http://localhost:8000/api/v1/workflows')
             if (res.ok) setSavedWorkflows(await res.json())
+        } catch { /* ignore */ }
+    }
+
+    const fetchLeads = async () => {
+        try {
+            const res = await fetch('http://localhost:8000/api/v1/leads')
+            if (res.ok) setDbLeads(await res.json())
         } catch { /* ignore */ }
     }
 
@@ -489,7 +495,36 @@ function WorkflowBuilder() {
                         </div>
                         <p className="config-desc">{selectedNode.data.description as string}</p>
 
-                        {configFields.length === 0 ? (
+                        {/* ── Special: Load Lead Node — shows real lead picker ── */}
+                        {(selectedNode.data.type as string) === 'load_lead' ? (
+                            <div className="config-fields">
+                                <div className="config-field">
+                                    <label className="config-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <FolderOpen size={11} /> Select Lead from DB
+                                    </label>
+                                    {dbLeads.length === 0 ? (
+                                        <p style={{ fontSize: '11px', color: '#64748b', margin: '4px 0' }}>
+                                            No leads in DB yet. Upload leads on the Leads page first.
+                                        </p>
+                                    ) : (
+                                        <select
+                                            className="config-input"
+                                            value={configValues['lead_index'] || '0'}
+                                            onChange={(e) => setConfigValues((v) => ({ ...v, lead_index: e.target.value }))}
+                                        >
+                                            {dbLeads.map((lead, idx) => (
+                                                <option key={lead.id} value={String(idx)}>
+                                                    {lead.first_name} {lead.last_name} — {lead.company || 'N/A'} ({lead.job_title || lead.email})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                                <button className="btn-primary config-apply-btn" onClick={applyConfig}>
+                                    Apply Config
+                                </button>
+                            </div>
+                        ) : configFields.length === 0 ? (
                             <p className="config-empty">No configurable settings for this node.</p>
                         ) : (
                             <div className="config-fields">

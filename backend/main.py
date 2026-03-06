@@ -20,13 +20,22 @@ from pydantic import BaseModel
 from typing import Optional
 
 from database import engine, get_db, Base
-from models import CompanySettings, Workflow
+from models import CompanySettings, Workflow, Lead
 from workflow_runner import run_workflow
 from leads_router import router as leads_router
 from knowledge_base_router import router as kb_router
+from seed_workflows import seed_demo_workflows
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Seed 3 demo workflows on first boot (idempotent)
+from database import SessionLocal
+_seed_db = SessionLocal()
+try:
+    seed_demo_workflows(_seed_db)
+finally:
+    _seed_db.close()
 
 # Pydantic schemas
 
@@ -39,8 +48,8 @@ class WorkflowUpdate(BaseModel):
     flow_definition: Optional[str] = None
 
 class WorkflowRunRequest(BaseModel):
-    openai_api_key: str
-    lead_override: Optional[dict] = None  # optional: override lead fields at run time
+    openai_api_key: Optional[str] = None   # Falls back to OPENAI_API_KEY env var if omitted
+    lead_override: Optional[dict] = None
 
 # Create the FastAPI application instance
 app = FastAPI(
@@ -160,13 +169,47 @@ def run_workflow_endpoint(workflow_id: int, body: WorkflowRunRequest, db: Sessio
     if not wf.flow_definition:
         raise HTTPException(status_code=400, detail="Workflow has no flow definition")
 
-    # Fetch the company knowledge base for AI context
+    # Resolve API key: body > env var
+    api_key = (body.openai_api_key or "").strip() or os.getenv("OPENAI_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No OpenAI API key available. Set OPENAI_API_KEY in .env or pass openai_api_key in the request body.")
+
+    # Fetch the company knowledge base (both raw + structured)
     settings = db.query(CompanySettings).first()
-    knowledge_base = settings.knowledge_base_text if settings else ""
+    knowledge_base = ""
+    kb_structured = {}
+    if settings:
+        knowledge_base = settings.knowledge_base_text or ""
+        kb_structured = {
+            "company_description": settings.company_description or "",
+            "product_offering":    settings.product_offering or "",
+            "target_customers":    settings.target_customers or "",
+            "value_proposition":   settings.value_proposition or "",
+            "messaging_tone":      settings.messaging_tone or "",
+        }
+
+    # Fetch all real leads from the DB
+    db_leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
+    leads = [
+        {
+            "id":          l.id,
+            "email":       l.email,
+            "first_name":  l.first_name,
+            "last_name":   l.last_name,
+            "company":     l.company,
+            "job_title":   l.job_title,
+            "industry":    l.industry,
+            "country":     l.country,
+            "lead_source": l.lead_source,
+        }
+        for l in db_leads
+    ]
 
     result = run_workflow(
         flow_definition=wf.flow_definition,
-        api_key=body.openai_api_key,
-        knowledge_base=knowledge_base or "",
+        api_key=api_key,
+        knowledge_base=knowledge_base,
+        kb_structured=kb_structured,
+        leads=leads,
     )
     return result
