@@ -5,7 +5,7 @@
 */
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { BookOpen, GitBranch, BarChart3, Zap, Menu } from 'lucide-react'
+import { BookOpen, GitBranch, BarChart3, Zap, Menu, Users } from 'lucide-react'
 import './App.css'
 
 /*
@@ -15,6 +15,7 @@ import './App.css'
 const NAV_ITEMS = [
   { label: 'Knowledge Base', path: '/knowledge-base', icon: BookOpen },
   { label: 'Workflow Builder', path: '/workflow-builder', icon: GitBranch },
+  { label: 'Leads', path: '/leads', icon: Users },
   { label: 'Dashboard', path: '/dashboard', icon: BarChart3 },
 ]
 

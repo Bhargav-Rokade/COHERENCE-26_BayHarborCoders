@@ -16,6 +16,7 @@ from typing import Optional
 from database import engine, get_db, Base
 from models import CompanySettings, Workflow
 from workflow_runner import run_workflow
+from leads_router import router as leads_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -59,6 +60,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+# Register routers
+app.include_router(leads_router)
+
 
 # ---------------------
 # Health Check
@@ -79,6 +83,7 @@ def api_status():
             "knowledge_base": "initialized",
             "workflow_builder": "initialized",
             "dashboard": "initialized",
+            "leads_intelligence": "initialized",
         },
     }
 

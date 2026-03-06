@@ -11,6 +11,7 @@ import App from './App'
 import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import WorkflowBuilderPage from './pages/WorkflowBuilderPage'
 import DashboardPage from './pages/DashboardPage'
+import LeadsPage from './pages/LeadsPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="knowledge-base" element={<KnowledgeBasePage />} />
           <Route path="workflow-builder" element={<WorkflowBuilderPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="leads" element={<LeadsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
