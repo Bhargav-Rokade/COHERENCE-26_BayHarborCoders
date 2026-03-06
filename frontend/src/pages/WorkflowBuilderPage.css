@@ -1,0 +1,180 @@
+/*
+  WorkflowBuilderPage.css — Styles for the Workflow Builder module
+*/
+
+.wb-page {
+    height: calc(100vh - var(--space-xl) * 2);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Side-by-side: palette on left, canvas on right */
+.wb-layout {
+    display: flex;
+    gap: var(--space-lg);
+    flex: 1;
+    min-height: 0;
+    /* important for flex children to not overflow */
+}
+
+
+/* ---- Node Palette ---- */
+.wb-palette {
+    width: 240px;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.palette-title {
+    font-size: var(--font-size-base);
+    margin-bottom: var(--space-xs);
+}
+
+.palette-subtitle {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+}
+
+.palette-nodes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+/* Individual draggable node in the palette */
+.palette-node {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: grab;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.palette-node:hover {
+    border-color: var(--border-color-hover);
+    background: var(--bg-surface-hover);
+    transform: translateX(2px);
+}
+
+.palette-node:active {
+    cursor: grabbing;
+}
+
+/* Thin color bar on the left edge of each node */
+.node-color-bar {
+    width: 3px;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 3px 0 0 3px;
+}
+
+.node-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    margin-left: var(--space-xs);
+}
+
+.node-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.node-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.node-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+
+/* ---- Canvas Area ---- */
+.wb-canvas {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Grid background to look like a workflow editor */
+.canvas-grid {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+    background-image:
+        radial-gradient(circle, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+}
+
+/* Empty state content shown when no nodes are placed */
+.canvas-empty {
+    text-align: center;
+    max-width: 400px;
+}
+
+.canvas-empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-md);
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-primary);
+}
+
+.canvas-empty h3 {
+    margin-bottom: var(--space-sm);
+}
+
+.canvas-empty p {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-lg);
+}
+
+/* Example workflow flow shown in the empty state */
+.canvas-example {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.example-step {
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--text-accent);
+    font-weight: 500;
+}
+
+.example-arrow {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}

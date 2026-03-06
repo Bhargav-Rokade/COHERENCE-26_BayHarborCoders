@@ -1,0 +1,269 @@
+# Phase 2 — Backend Architecture Plan
+
+Backend data storage schema, FastAPI API contracts, and sprint deliverables.
+
+---
+
+## Data Storage
+
+**Engine: SQLite** via Python's built-in `sqlite3` module — no ORM, no extra dependencies. Simple, file-based, zero config. Perfect for a hackathon MVP.
+
+Database file: `backend/coherence.db` (auto-created on first run)
+
+---
+
+### Schema — 4 Tables
+
+```mermaid
+erDiagram
+    knowledge_base {
+        int id PK
+        text content
+        text updated_at
+    }
+
+    workflows {
+        text id PK
+        text name
+        text description
+        text nodes_json
+        text edges_json
+        text created_at
+        text updated_at
+    }
+
+    workflow_runs {
+        text id PK
+        text workflow_id FK
+        text lead_name
+        text lead_persona
+        text current_step
+        text status
+        text started_at
+        text completed_at
+    }
+
+    execution_logs {
+        int id PK
+        text run_id FK
+        text lead_name
+        text event
+        text log_type
+        text timestamp
+    }
+
+    workflows ||--o{ workflow_runs : "has many"
+    workflow_runs ||--o{ execution_logs : "has many"
+```
+
+### Table Details
+
+#### `knowledge_base`
+Stores the company context text. Only **one row** exists (singleton pattern — upsert on save).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | Always 1 (singleton) |
+| `content` | TEXT | The company info text (max ~3000 chars) |
+| `updated_at` | TEXT | ISO 8601 timestamp |
+
+#### `workflows`
+Stores workflow definitions built in the visual editor.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | UUID string |
+| `name` | TEXT | e.g. "Cold Outreach" |
+| `description` | TEXT | Optional description |
+| `nodes_json` | TEXT | JSON array of node objects from React Flow |
+| `edges_json` | TEXT | JSON array of edge connections from React Flow |
+| `created_at` | TEXT | ISO 8601 |
+| `updated_at` | TEXT | ISO 8601 |
+
+#### `workflow_runs`
+Tracks each execution of a workflow against a lead/persona.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | TEXT PK | UUID string |
+| `workflow_id` | TEXT FK | References `workflows.id` |
+| `lead_name` | TEXT | e.g. "John Smith" |
+| `lead_persona` | TEXT | e.g. "skeptical_cto", "busy_founder" |
+| `current_step` | TEXT | Current node label/id |
+| `status` | TEXT | `active` / `waiting` / `completed` / `failed` |
+| `started_at` | TEXT | ISO 8601 |
+| `completed_at` | TEXT | ISO 8601, nullable |
+
+#### `execution_logs`
+Chronological event log for each run — what the dashboard displays.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | INTEGER PK | Auto-increment |
+| `run_id` | TEXT FK | References `workflow_runs.id` |
+| `lead_name` | TEXT | Denormalized for fast log queries |
+| `event` | TEXT | e.g. "Email Generated", "Workflow Started" |
+| `log_type` | TEXT | `info` / `success` / `error` |
+| `timestamp` | TEXT | ISO 8601 |
+
+---
+
+## FastAPI API Contracts
+
+All endpoints are prefixed with `/api/v1`. Request/response bodies are JSON.
+
+---
+
+### Module 1 — Knowledge Base
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/knowledge-base` | Fetch the saved company info |
+| `PUT` | `/api/v1/knowledge-base` | Save/update the company info text |
+
+**`GET /api/v1/knowledge-base`** → Response:
+```json
+{
+  "content": "We are a B2B SaaS company...",
+  "updated_at": "2026-03-06T14:00:00Z"
+}
+```
+
+**`PUT /api/v1/knowledge-base`** → Request body:
+```json
+{
+  "content": "We are a B2B SaaS company..."
+}
+```
+Response: `{ "status": "saved", "updated_at": "..." }`
+
+---
+
+### Module 2 — Workflows
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/workflows` | List all saved workflows |
+| `GET` | `/api/v1/workflows/{id}` | Get a single workflow by ID |
+| `POST` | `/api/v1/workflows` | Create a new workflow |
+| `PUT` | `/api/v1/workflows/{id}` | Update an existing workflow |
+| `DELETE` | `/api/v1/workflows/{id}` | Delete a workflow |
+| `POST` | `/api/v1/workflows/{id}/test` | Run a test simulation |
+
+**`POST /api/v1/workflows`** → Request:
+```json
+{
+  "name": "Cold Outreach",
+  "description": "Initial cold outreach sequence",
+  "nodes": [
+    { "id": "1", "type": "trigger", "position": { "x": 0, "y": 100 }, "data": {} },
+    { "id": "2", "type": "ai_generate", "position": { "x": 200, "y": 100 }, "data": {} }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2" }
+  ]
+}
+```
+
+**`POST /api/v1/workflows/{id}/test`** → Request:
+```json
+{
+  "persona": "skeptical_cto",
+  "lead_name": "John Smith"
+}
+```
+Response: Returns a `workflow_run` with `id` that can be polled for status.
+
+---
+
+### Module 3 — Dashboard
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/dashboard/stats` | Aggregated counts (total, active, completed, failed) |
+| `GET` | `/api/v1/dashboard/runs` | List of workflow runs with current status |
+| `GET` | `/api/v1/dashboard/logs` | Execution log entries (most recent first) |
+
+**`GET /api/v1/dashboard/stats`** → Response:
+```json
+{
+  "total_runs": 24,
+  "active": 3,
+  "completed": 18,
+  "failed": 3
+}
+```
+
+**`GET /api/v1/dashboard/runs`** → Response:
+```json
+{
+  "runs": [
+    {
+      "id": "run-uuid",
+      "lead_name": "John Smith",
+      "workflow_name": "Cold Outreach",
+      "current_step": "Follow-up Email",
+      "status": "waiting",
+      "started_at": "2026-03-06T10:00:00Z"
+    }
+  ]
+}
+```
+
+**`GET /api/v1/dashboard/logs`** → Response:
+```json
+{
+  "logs": [
+    {
+      "timestamp": "2026-03-06T10:01:00Z",
+      "lead_name": "John Smith",
+      "event": "Email Generated",
+      "log_type": "info"
+    }
+  ]
+}
+```
+
+---
+
+### Utility
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/health` | Health check (already exists) |
+| `GET` | `/api/v1/status` | API status (already exists) |
+
+---
+
+## Backend File Structure
+
+```
+backend/
+├── main.py                  # FastAPI app, CORS, router registration
+├── requirements.txt         # Dependencies
+├── database.py              # SQLite connection + table creation
+├── routers/
+│   ├── knowledge_base.py    # Knowledge Base endpoints
+│   ├── workflows.py         # Workflow CRUD + test endpoints
+│   └── dashboard.py         # Dashboard query endpoints
+├── models.py                # Pydantic models for request/response validation
+└── coherence.db             # SQLite database (auto-created)
+```
+
+---
+
+## Sprint Deliverables — What Will Be Achieved
+
+By the end of this backend sprint, the system will support:
+
+| # | Deliverable | Description |
+|---|-------------|-------------|
+| 1 | **Persistent Knowledge Base** | Company info saved to DB, loads on page refresh |
+| 2 | **Workflow CRUD** | Create, read, update, delete workflows via API |
+| 3 | **Workflow Test Runner** | Hit "Test" on a workflow → simulated execution against a persona, generating run records and logs |
+| 4 | **Live Dashboard** | Dashboard pulls real data from DB instead of hardcoded mock data |
+| 5 | **Execution Logging** | Every step of a test run creates timestamped log entries |
+| 6 | **Frontend ↔ Backend Wired** | Frontend pages will call real API endpoints instead of using local state/mock data |
+
+> [!NOTE]
+> AI message generation (the actual LLM call in the AI Generate node) is **not** part of this sprint. The test runner will use **simulated/templated responses** for now. LLM integration will be a separate sprint.

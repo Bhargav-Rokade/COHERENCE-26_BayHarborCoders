@@ -1,0 +1,127 @@
+/*
+  DashboardPage.css — Styles for the Visualization Dashboard
+*/
+
+.dash-page {
+    max-width: 1200px;
+}
+
+
+/* ---- Stat Cards Row ---- */
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+
+/* ---- Two-column grid for tables ---- */
+.dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+}
+
+.section-title {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.lead-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+
+/* ---- Execution Logs ---- */
+.logs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.log-entry {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    transition: background var(--transition-fast);
+}
+
+.log-entry:hover {
+    background: var(--bg-surface);
+}
+
+.log-time {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    min-width: 72px;
+    font-family: monospace;
+}
+
+.log-lead {
+    color: var(--text-primary);
+    font-weight: 500;
+    min-width: 120px;
+}
+
+.log-event {
+    color: var(--text-secondary);
+}
+
+/* Log entry type colors */
+.log-entry.log-success .log-event {
+    color: var(--status-success);
+}
+
+.log-entry.log-error .log-event {
+    color: var(--status-error);
+}
