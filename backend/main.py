@@ -1,11 +1,7 @@
 """
 main.py — FastAPI Backend Entry Point
 
-A minimal FastAPI server for the Coherence outreach platform.
-For the MVP phase, this provides:
-  - A health check endpoint
-  - CORS configuration for the Vite dev server
-  - Placeholder for future API routes
+FastAPI server for the Coherence outreach platform.
 
 To run:
   uvicorn main:app --reload --port 8000
@@ -19,6 +15,7 @@ from typing import Optional
 
 from database import engine, get_db, Base
 from models import CompanySettings, Workflow
+from workflow_runner import run_workflow
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -34,6 +31,10 @@ class WorkflowCreate(BaseModel):
 class WorkflowUpdate(BaseModel):
     name: Optional[str] = None
     flow_definition: Optional[str] = None
+
+class WorkflowRunRequest(BaseModel):
+    openai_api_key: str
+    lead_override: Optional[dict] = None  # optional: override lead fields at run time
 
 # Create the FastAPI application instance
 app = FastAPI(
@@ -152,3 +153,36 @@ def update_workflow(workflow_id: int, data: WorkflowUpdate, db: Session = Depend
     db.commit()
     db.refresh(wf)
     return {"id": wf.id, "name": wf.name, "flow_definition": wf.flow_definition}
+
+@app.delete("/api/v1/workflows/{workflow_id}")
+def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
+    """Delete a workflow by ID."""
+    wf = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    db.delete(wf)
+    db.commit()
+    return {"deleted": True}
+
+@app.post("/api/v1/workflows/{workflow_id}/run")
+def run_workflow_endpoint(workflow_id: int, body: WorkflowRunRequest, db: Session = Depends(get_db)):
+    """
+    Execute a saved workflow step by step.
+    Returns a structured execution log with each node's output.
+    """
+    wf = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    if not wf.flow_definition:
+        raise HTTPException(status_code=400, detail="Workflow has no flow definition")
+
+    # Fetch the company knowledge base for AI context
+    settings = db.query(CompanySettings).first()
+    knowledge_base = settings.knowledge_base_text if settings else ""
+
+    result = run_workflow(
+        flow_definition=wf.flow_definition,
+        api_key=body.openai_api_key,
+        knowledge_base=knowledge_base or "",
+    )
+    return result

@@ -1,49 +1,134 @@
 /*
-  WorkflowBuilderPage.tsx — Workflow Builder Module
-
-  Features:
-  - Drag-and-drop node palette (6 node types)
-  - React Flow canvas with node/edge deletion (Delete key or Backspace)
-  - Save current workflow (POST or PUT to backend)
-  - New workflow button (clears the canvas)
-  - Editable workflow name
+  WorkflowBuilderPage.tsx — Full Workflow Builder with:
+  - 12 categorised node types (drag-and-drop palette)
+  - Node config side panel (click any canvas node to configure it)
+  - Save / Update workflow
+  - Run Simulation (calls backend executor, shows step log)
+  - Load saved workflows from backend
 */
-import { Zap, Brain, Mail, Clock, GitBranch, Square, Save, Plus, Trash2 } from 'lucide-react'
-import { useCallback, useState } from 'react'
 import {
-    ReactFlow,
-    Controls,
-    Background,
-    applyNodeChanges,
-    applyEdgeChanges,
-    addEdge,
-    ReactFlowProvider,
+    Zap, Database, Brain, Wand2, BarChart2,
+    Send, Timer, Eye, Bot, GitBranch, TrendingUp, CheckSquare,
+    Save, Plus, Play, ChevronDown, ChevronRight, X, Loader,
+    CheckCircle, XCircle, FolderOpen, Key,
+} from 'lucide-react'
+import { useCallback, useState, useEffect } from 'react'
+import {
+    ReactFlow, Controls, Background,
+    applyNodeChanges, applyEdgeChanges, addEdge, ReactFlowProvider,
 } from '@xyflow/react'
-import type {
-    NodeChange,
-    EdgeChange,
-    Connection,
-    Edge,
-    Node,
-} from '@xyflow/react'
+import type { NodeChange, EdgeChange, Connection, Edge, Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { nanoid } from 'nanoid'
 import { CustomNode } from './CustomNodes'
 import './WorkflowBuilderPage.css'
 
-/* Define the palette node types */
-const PALETTE_NODES = [
-    { type: 'trigger', label: 'Trigger', description: 'Starts the workflow', icon: Zap, iconName: 'Zap', color: '#10b981' },
-    { type: 'ai_generate', label: 'AI Generate', description: 'Generate content with AI', icon: Brain, iconName: 'Brain', color: '#6366f1' },
-    { type: 'action', label: 'Send Email', description: 'Send an outreach email', icon: Mail, iconName: 'Mail', color: '#3b82f6' },
-    { type: 'wait', label: 'Wait / Delay', description: 'Add a timed delay', icon: Clock, iconName: 'Clock', color: '#f59e0b' },
-    { type: 'condition', label: 'Condition', description: 'Branch based on a condition', icon: GitBranch, iconName: 'GitBranch', color: '#f97316' },
-    { type: 'end', label: 'End', description: 'Terminate the workflow', icon: Square, iconName: 'Square', color: '#ef4444' },
+/* ─── Node Palette Definition ─── */
+const PALETTE_CATEGORIES = [
+    {
+        label: 'Triggers',
+        color: '#10b981',
+        nodes: [
+            { type: 'trigger', label: 'Trigger', description: 'Start the workflow', iconName: 'Zap', color: '#10b981' },
+            { type: 'load_lead', label: 'Load Lead Context', description: 'Fetch lead from dataset', iconName: 'Database', color: '#14b8a6' },
+        ],
+    },
+    {
+        label: 'AI',
+        color: '#6366f1',
+        nodes: [
+            { type: 'ai_compose', label: 'AI Outreach Composer', description: 'Generate outreach with AI', iconName: 'Brain', color: '#6366f1' },
+            { type: 'personalize', label: 'Personalization Engine', description: 'Tailor message to lead', iconName: 'Wand2', color: '#8b5cf6' },
+            { type: 'ai_analyze', label: 'AI Reply Analyzer', description: 'Analyze reply sentiment', iconName: 'BarChart2', color: '#a855f7' },
+        ],
+    },
+    {
+        label: 'Outreach',
+        color: '#3b82f6',
+        nodes: [
+            { type: 'send_message', label: 'Outreach Sender', description: 'Send via email / LinkedIn', iconName: 'Send', color: '#3b82f6' },
+            { type: 'delay', label: 'Delay / Pacing', description: 'Add human-like delay', iconName: 'Timer', color: '#f59e0b' },
+            { type: 'check_reply', label: 'Response Monitor', description: 'Check if lead replied', iconName: 'Eye', color: '#0ea5e9' },
+        ],
+    },
+    {
+        label: 'Simulation',
+        color: '#ec4899',
+        nodes: [
+            { type: 'persona_sim', label: 'Persona Simulator', description: 'Simulate lead persona reply', iconName: 'Bot', color: '#ec4899' },
+        ],
+    },
+    {
+        label: 'Logic',
+        color: '#f97316',
+        nodes: [
+            { type: 'condition', label: 'Conditional Branch', description: 'Route on condition', iconName: 'GitBranch', color: '#f97316' },
+            { type: 'lead_score', label: 'Lead Scoring', description: 'Score lead engagement', iconName: 'TrendingUp', color: '#84cc16' },
+            { type: 'update_status', label: 'Update Lead Status', description: 'Set pipeline state', iconName: 'CheckSquare', color: '#ef4444' },
+        ],
+    },
 ]
+
+/* ─── Per-node config field definitions ─── */
+const NODE_CONFIG_FIELDS: Record<string, Array<{ key: string; label: string; type: 'text' | 'select' | 'number'; options?: string[]; placeholder?: string }>> = {
+    trigger: [
+        { key: 'trigger_type', label: 'Trigger Type', type: 'select', options: ['manual', 'new_lead', 'test_run'] },
+    ],
+    load_lead: [
+        { key: 'name', label: 'Lead Name', type: 'text', placeholder: 'Alex Johnson' },
+        { key: 'company', label: 'Company', type: 'text', placeholder: 'Acme Corp' },
+        { key: 'title', label: 'Title', type: 'text', placeholder: 'CTO' },
+        { key: 'industry', label: 'Industry', type: 'text', placeholder: 'SaaS' },
+        { key: 'email', label: 'Email', type: 'text', placeholder: 'alex@acme.com' },
+    ],
+    ai_compose: [
+        { key: 'goal', label: 'Goal', type: 'select', options: ['intro', 'followup', 'meeting_request', 'demo_invite'] },
+        { key: 'tone', label: 'Tone', type: 'select', options: ['friendly', 'professional', 'technical', 'casual'] },
+        { key: 'length', label: 'Length', type: 'select', options: ['short', 'medium', 'long'] },
+    ],
+    personalize: [
+        { key: 'personalization_fields', label: 'Fields (comma separated)', type: 'text', placeholder: 'company, industry, role' },
+    ],
+    ai_analyze: [
+        { key: 'analysis_type', label: 'Analysis Type', type: 'select', options: ['intent', 'sentiment', 'urgency'] },
+    ],
+    send_message: [
+        { key: 'channel', label: 'Channel', type: 'select', options: ['email', 'linkedin', 'sms'] },
+        { key: 'message_field', label: 'Message Source Field', type: 'text', placeholder: 'personalized_message' },
+    ],
+    delay: [
+        { key: 'delay_type', label: 'Delay Type', type: 'select', options: ['fixed', 'random'] },
+        { key: 'min_seconds', label: 'Min Seconds', type: 'number', placeholder: '60' },
+        { key: 'max_seconds', label: 'Max Seconds', type: 'number', placeholder: '600' },
+    ],
+    check_reply: [
+        { key: 'check_window_hours', label: 'Check Window (hours)', type: 'number', placeholder: '48' },
+    ],
+    persona_sim: [
+        { key: 'persona', label: 'Persona', type: 'select', options: ['skeptical_cto', 'busy_founder', 'curious_engineer'] },
+    ],
+    condition: [
+        { key: 'condition_field', label: 'State Field', type: 'text', placeholder: 'intent' },
+        { key: 'equals', label: 'Equals', type: 'text', placeholder: 'interested' },
+    ],
+    lead_score: [
+        { key: 'reply_positive', label: 'Points: Positive Reply', type: 'number', placeholder: '20' },
+        { key: 'clicked_link', label: 'Points: Clicked Link', type: 'number', placeholder: '10' },
+    ],
+    update_status: [
+        { key: 'status', label: 'New Status', type: 'select', options: ['contacted', 'interested', 'meeting_booked', 'rejected', 'nurturing'] },
+    ],
+}
 
 const nodeTypes = { custom: CustomNode }
 
-/* ─── Inner builder component (must be inside ReactFlowProvider) ─── */
+const LOG_ICONS: Record<string, string> = {
+    trigger: '⚡', load_lead: '📋', ai_compose: '🧠', personalize: '✨',
+    ai_analyze: '📊', send_message: '📨', delay: '⏱', check_reply: '👁',
+    persona_sim: '🤖', condition: '🔀', lead_score: '📈', update_status: '🏷',
+}
+
+/* ─── Inner builder (must be inside ReactFlowProvider) ─── */
 function WorkflowBuilder() {
     const [nodes, setNodes] = useState<Node[]>([])
     const [edges, setEdges] = useState<Edge[]>([])
@@ -51,25 +136,71 @@ function WorkflowBuilder() {
     const [workflowId, setWorkflowId] = useState<number | null>(null)
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
+    // Config panel
+    const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+    const [configValues, setConfigValues] = useState<Record<string, string>>({})
+
+    // Run simulation
+    const [apiKey, setApiKey] = useState('')
+    const [apiKeyVisible, setApiKeyVisible] = useState(false)
+    const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+    const [runLog, setRunLog] = useState<any[]>([])
+    const [expandedLogItems, setExpandedLogItems] = useState<Set<number>>(new Set())
+    const [showLog, setShowLog] = useState(false)
+
+    // Saved workflows list
+    const [savedWorkflows, setSavedWorkflows] = useState<{ id: number; name: string; updated_at: string }[]>([])
+    const [showWorkflowList, setShowWorkflowList] = useState(false)
+
+    useEffect(() => {
+        fetchWorkflowList()
+    }, [])
+
+    const fetchWorkflowList = async () => {
+        try {
+            const res = await fetch('http://localhost:8000/api/v1/workflows')
+            if (res.ok) setSavedWorkflows(await res.json())
+        } catch { /* ignore */ }
+    }
+
     /* ── React Flow callbacks ── */
     const onNodesChange = useCallback(
-        (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
-        []
+        (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []
     )
     const onEdgesChange = useCallback(
-        (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-        []
+        (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), []
     )
     const onConnect = useCallback(
         (params: Connection) =>
             setEdges((eds) =>
-                addEdge({ ...params, animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } }, eds)
-            ),
-        []
+                addEdge({ ...params, animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } }, eds)
+            ), []
     )
 
+    /* ── Node click → open config panel ── */
+    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+        setSelectedNode(node)
+        setConfigValues({ ...(node.data.config as Record<string, string> || {}) })
+    }, [])
+
+    const onPaneClick = useCallback(() => {
+        setSelectedNode(null)
+    }, [])
+
+    /* ── Save config changes back to the node ── */
+    const applyConfig = () => {
+        if (!selectedNode) return
+        setNodes((nds) =>
+            nds.map((n) =>
+                n.id === selectedNode.id
+                    ? { ...n, data: { ...n.data, config: { ...configValues } } }
+                    : n
+            )
+        )
+    }
+
     /* ── Drag-and-drop from palette ── */
-    const onDragStart = (event: React.DragEvent, nodeData: typeof PALETTE_NODES[0]) => {
+    const onDragStart = (event: React.DragEvent, nodeData: typeof PALETTE_CATEGORIES[0]['nodes'][0]) => {
         event.dataTransfer.setData('application/reactflow', JSON.stringify(nodeData))
         event.dataTransfer.effectAllowed = 'move'
     }
@@ -90,32 +221,28 @@ function WorkflowBuilder() {
             x: event.clientX - reactFlowBounds.left,
             y: event.clientY - reactFlowBounds.top,
         }
-
         const newNode: Node = {
             id: nanoid(),
             type: 'custom',
             position,
-            data: { ...parsedType },
+            data: { ...parsedType, config: {} },
         }
         setNodes((nds) => nds.concat(newNode))
     }, [])
 
-    /* ── Save workflow to backend ── */
+    /* ── Save workflow ── */
     const handleSave = async () => {
         setSaveStatus('saving')
         const flowDef = JSON.stringify({ nodes, edges })
-
         try {
             let response: Response
             if (workflowId) {
-                // Update existing
                 response = await fetch(`http://localhost:8000/api/v1/workflows/${workflowId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: workflowName, flow_definition: flowDef }),
                 })
             } else {
-                // Create new
                 response = await fetch('http://localhost:8000/api/v1/workflows', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -126,6 +253,7 @@ function WorkflowBuilder() {
             const saved = await response.json()
             setWorkflowId(saved.id)
             setSaveStatus('saved')
+            fetchWorkflowList()
             setTimeout(() => setSaveStatus('idle'), 2500)
         } catch {
             setSaveStatus('error')
@@ -133,111 +261,212 @@ function WorkflowBuilder() {
         }
     }
 
-    /* ── New workflow (clear the canvas) ── */
+    /* ── Load a saved workflow ── */
+    const handleLoad = async (id: number, name: string) => {
+        const res = await fetch(`http://localhost:8000/api/v1/workflows/${id}`)
+        if (!res.ok) return
+        const wf = await res.json()
+        const parsed = JSON.parse(wf.flow_definition)
+        setNodes(parsed.nodes || [])
+        setEdges(parsed.edges || [])
+        setWorkflowName(name)
+        setWorkflowId(id)
+        setSelectedNode(null)
+        setRunLog([])
+        setShowWorkflowList(false)
+    }
+
+    /* ── Run simulation ── */
+    const handleRun = async () => {
+        if (!workflowId) return
+        if (!apiKey.trim()) {
+            alert('Please enter your OpenAI API key first.')
+            setApiKeyVisible(true)
+            return
+        }
+        setRunStatus('running')
+        setShowLog(true)
+        setRunLog([])
+        setExpandedLogItems(new Set())
+        try {
+            const res = await fetch(`http://localhost:8000/api/v1/workflows/${workflowId}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ openai_api_key: apiKey }),
+            })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const data = await res.json()
+            setRunLog(data.log || [])
+            setRunStatus(data.success ? 'done' : 'error')
+        } catch (e) {
+            setRunLog([{ node_id: 'error', node_type: 'error', label: 'Request Failed', output: {}, error: String(e) }])
+            setRunStatus('error')
+        }
+    }
+
+    /* ── New workflow ── */
     const handleNew = () => {
-        setNodes([])
-        setEdges([])
-        setWorkflowName('Untitled Workflow')
-        setWorkflowId(null)
-        setSaveStatus('idle')
+        setNodes([]); setEdges([]); setWorkflowName('Untitled Workflow')
+        setWorkflowId(null); setSaveStatus('idle'); setSelectedNode(null)
+        setRunLog([]); setRunStatus('idle'); setShowLog(false)
+    }
+
+    const toggleLogItem = (i: number) => {
+        setExpandedLogItems((prev) => {
+            const next = new Set(prev)
+            next.has(i) ? next.delete(i) : next.add(i)
+            return next
+        })
     }
 
     const saveLabel =
         saveStatus === 'saving' ? 'Saving…'
             : saveStatus === 'saved' ? '✓ Saved!'
                 : saveStatus === 'error' ? '✗ Error'
-                    : workflowId ? 'Update Workflow'
-                        : 'Save Workflow'
+                    : workflowId ? 'Update' : 'Save'
+
+    const runLabel =
+        runStatus === 'running' ? 'Running…'
+            : runStatus === 'done' ? 'Run Again'
+                : runStatus === 'error' ? 'Retry'
+                    : 'Run Simulation'
+
+    const configFields = selectedNode
+        ? NODE_CONFIG_FIELDS[selectedNode.data.type as string] || []
+        : []
 
     return (
-        <div className="wb-page">
+        <div className={`wb-page ${showLog ? 'wb-page--log-open' : ''}`}>
             {/* ── Page Header ── */}
-            <div className="page-header" style={{ paddingBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                    <h1 style={{ margin: 0 }}>
-                        <GitBranch size={28} style={{ verticalAlign: 'middle', marginRight: '12px' }} />
+            <div className="page-header wb-header">
+                <div className="wb-header-left">
+                    <h1>
+                        <GitBranch size={24} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
                         Workflow Builder
                     </h1>
-
-                    {/* Editable workflow name */}
                     <input
                         className="workflow-name-input"
                         value={workflowName}
                         onChange={(e) => setWorkflowName(e.target.value)}
                         placeholder="Workflow name…"
                     />
-
-                    {/* Toolbar buttons */}
-                    <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-                        <button className="btn-secondary" onClick={handleNew} title="Start a new blank workflow">
-                            <Plus size={15} />
-                            New
-                        </button>
-                        <button
-                            className="btn-primary"
-                            onClick={handleSave}
-                            disabled={saveStatus === 'saving' || nodes.length === 0}
-                            title="Save the current workflow"
-                        >
-                            <Save size={15} />
-                            {saveLabel}
-                        </button>
-                    </div>
                 </div>
-                <p style={{ margin: '8px 0 0', color: 'var(--text-muted)' }}>
-                    Drag nodes onto the canvas and connect them.&nbsp;
-                    <span style={{ opacity: 0.7 }}>Select a node or edge and press&nbsp;
-                        <kbd style={{ background: '#1e293b', border: '1px solid #334155', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>Delete</kbd>
-                        &nbsp;or&nbsp;
-                        <kbd style={{ background: '#1e293b', border: '1px solid #334155', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>Backspace</kbd>
-                        &nbsp;to remove it.
-                    </span>
-                </p>
+
+                <div className="wb-header-right">
+                    {/* Load */}
+                    <div className="wb-dropdown-wrap">
+                        <button className="btn-secondary" onClick={() => setShowWorkflowList((v) => !v)} title="Open saved workflow">
+                            <FolderOpen size={14} /> Open
+                        </button>
+                        {showWorkflowList && (
+                            <div className="wb-dropdown">
+                                {savedWorkflows.length === 0
+                                    ? <div className="wb-dropdown-empty">No saved workflows</div>
+                                    : savedWorkflows.map((wf) => (
+                                        <div key={wf.id} className="wb-dropdown-item" onClick={() => handleLoad(wf.id, wf.name)}>
+                                            <span className="wf-name">{wf.name}</span>
+                                            <span className="wf-date">{wf.updated_at.slice(0, 10)}</span>
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        )}
+                    </div>
+
+                    <button className="btn-secondary" onClick={handleNew} title="New blank workflow">
+                        <Plus size={14} /> New
+                    </button>
+                    <button className="btn-primary" onClick={handleSave}
+                        disabled={saveStatus === 'saving' || nodes.length === 0}>
+                        <Save size={14} /> {saveLabel}
+                    </button>
+
+                    {/* API key toggle */}
+                    <button className={`btn-icon ${apiKey ? 'btn-icon--active' : ''}`}
+                        onClick={() => setApiKeyVisible((v) => !v)} title="Set OpenAI API Key">
+                        <Key size={14} />
+                    </button>
+
+                    {/* Run */}
+                    <button
+                        className={`btn-run ${runStatus === 'running' ? 'btn-run--running' : ''} ${runStatus === 'error' ? 'btn-run--error' : ''}`}
+                        onClick={handleRun}
+                        disabled={runStatus === 'running' || !workflowId}
+                        title={!workflowId ? 'Save the workflow first' : 'Execute workflow'}
+                    >
+                        {runStatus === 'running'
+                            ? <Loader size={14} className="spin" />
+                            : <Play size={14} />
+                        }
+                        {runLabel}
+                    </button>
+                </div>
             </div>
+
+            {/* ── API Key bar ── */}
+            {apiKeyVisible && (
+                <div className="api-key-bar glass-panel">
+                    <Key size={14} style={{ color: '#6366f1', flexShrink: 0 }} />
+                    <input
+                        className="api-key-input"
+                        type="password"
+                        placeholder="sk-…  (OpenAI API Key — used only for this session)"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                    />
+                    <button className="btn-primary btn-sm" onClick={() => setApiKeyVisible(false)}>
+                        Confirm
+                    </button>
+                </div>
+            )}
 
             {/* ── Builder layout ── */}
             <div className="wb-layout">
-                {/* Left palette */}
+                {/* Left: palette */}
                 <div className="wb-palette glass-panel">
                     <h3 className="palette-title">Node Palette</h3>
                     <p className="palette-subtitle">Drag nodes to the canvas</p>
 
-                    <div className="palette-nodes">
-                        {PALETTE_NODES.map((node) => (
-                            <div
-                                key={node.type}
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, node)}
-                            >
-                                <div className="node-color-bar" style={{ backgroundColor: node.color }} />
-                                <div className="node-icon" style={{ color: node.color }}>
-                                    <node.icon size={18} />
+                    <div className="palette-categories">
+                        {PALETTE_CATEGORIES.map((cat) => (
+                            <div key={cat.label} className="palette-category">
+                                <div className="palette-cat-header" style={{ borderColor: cat.color }}>
+                                    <span style={{ color: cat.color }}>{cat.label}</span>
                                 </div>
-                                <div className="node-info">
-                                    <span className="node-label">{node.label}</span>
-                                    <span className="node-desc">{node.description}</span>
-                                </div>
+                                {cat.nodes.map((node) => (
+                                    <div
+                                        key={node.type}
+                                        className="palette-node"
+                                        draggable
+                                        onDragStart={(e) => onDragStart(e, node)}
+                                    >
+                                        <div className="node-color-bar" style={{ backgroundColor: node.color }} />
+                                        <div className="node-icon" style={{ color: node.color }}>
+                                            {node.iconName === 'Zap' && <Zap size={15} />}
+                                            {node.iconName === 'Database' && <Database size={15} />}
+                                            {node.iconName === 'Brain' && <Brain size={15} />}
+                                            {node.iconName === 'Wand2' && <Wand2 size={15} />}
+                                            {node.iconName === 'BarChart2' && <BarChart2 size={15} />}
+                                            {node.iconName === 'Send' && <Send size={15} />}
+                                            {node.iconName === 'Timer' && <Timer size={15} />}
+                                            {node.iconName === 'Eye' && <Eye size={15} />}
+                                            {node.iconName === 'Bot' && <Bot size={15} />}
+                                            {node.iconName === 'GitBranch' && <GitBranch size={15} />}
+                                            {node.iconName === 'TrendingUp' && <TrendingUp size={15} />}
+                                            {node.iconName === 'CheckSquare' && <CheckSquare size={15} />}
+                                        </div>
+                                        <div className="node-info">
+                                            <span className="node-label">{node.label}</span>
+                                            <span className="node-desc">{node.description}</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         ))}
                     </div>
-
-                    {/* Hint about deletion */}
-                    <div style={{
-                        marginTop: 'auto',
-                        padding: '12px',
-                        background: 'rgba(239,68,68,0.07)',
-                        border: '1px solid rgba(239,68,68,0.2)',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        color: '#94a3b8'
-                    }}>
-                        <Trash2 size={13} style={{ verticalAlign: 'middle', marginRight: '6px', color: '#ef4444' }} />
-                        Select then <strong>Delete / Backspace</strong> to remove nodes or edges.
-                    </div>
                 </div>
 
-                {/* Canvas */}
+                {/* Center: Canvas */}
                 <div className="wb-canvas glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
                     <ReactFlow
                         nodes={nodes}
@@ -247,41 +476,128 @@ function WorkflowBuilder() {
                         onConnect={onConnect}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
+                        onNodeClick={onNodeClick}
+                        onPaneClick={onPaneClick}
                         nodeTypes={nodeTypes}
                         deleteKeyCode={['Delete', 'Backspace']}
                         fitView
-                        defaultEdgeOptions={{
-                            style: { stroke: '#94a3b8', strokeWidth: 2 },
-                            animated: true,
-                        }}
+                        defaultEdgeOptions={{ style: { stroke: '#6366f1', strokeWidth: 2 }, animated: true }}
                     >
-                        <Background color="#334155" gap={20} size={1} />
+                        <Background color="#1e293b" gap={24} size={1} />
                         <Controls />
 
                         {nodes.length === 0 && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                <div className="canvas-empty" style={{
-                                    background: 'rgba(30,41,59,0.85)',
-                                    border: '1px solid #334155',
-                                    borderRadius: '16px',
-                                    padding: '40px',
-                                    display: 'none',
-                                    maxWidth: '400px',
-                                    textAlign: 'center',
-                                    boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
-                                    backdropFilter: 'blur(8px)',
-                                }}>
-                                    <div className="canvas-empty-icon">
-                                        <GitBranch size={48} style={{ color: '#10b981' }} />
+                            <div className="canvas-empty-overlay">
+                                <div className="canvas-empty">
+                                    <GitBranch size={40} style={{ color: '#6366f1', marginBottom: '16px' }} />
+                                    <h3>Build Your Outreach Workflow</h3>
+                                    <p>Drag nodes from the palette on the left and connect them to create your AI-powered outreach sequence.</p>
+                                    <div className="canvas-example-flow">
+                                        {['Trigger', '→', 'Load Lead', '→', 'AI Compose', '→', 'Send', '→', 'Monitor']}
+                                        {['Trigger', 'Load Lead', 'AI Compose', 'Send', 'Monitor'].map((s, i) => (
+                                            <span key={i} className={i % 2 === 0 ? 'example-step' : 'example-arrow'}>{i % 2 === 0 ? s : '→'}</span>
+                                        ))}
                                     </div>
-                                    <h3>Build Your Workflow</h3>
-                                    <p>Drag nodes from the palette and connect them to create your outreach sequence.</p>
                                 </div>
                             </div>
                         )}
                     </ReactFlow>
                 </div>
+
+                {/* Right: Config panel */}
+                {selectedNode && (
+                    <div className="wb-config glass-panel">
+                        <div className="config-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{
+                                    width: '10px', height: '10px', borderRadius: '50%',
+                                    background: selectedNode.data.color as string || '#6366f1'
+                                }} />
+                                <h3 style={{ margin: 0, fontSize: '14px' }}>{selectedNode.data.label as string}</h3>
+                            </div>
+                            <button className="btn-icon-sm" onClick={() => setSelectedNode(null)}><X size={14} /></button>
+                        </div>
+                        <p className="config-desc">{selectedNode.data.description as string}</p>
+
+                        {configFields.length === 0 ? (
+                            <p className="config-empty">No configurable settings for this node.</p>
+                        ) : (
+                            <div className="config-fields">
+                                {configFields.map((field) => (
+                                    <div key={field.key} className="config-field">
+                                        <label className="config-label">{field.label}</label>
+                                        {field.type === 'select' ? (
+                                            <select
+                                                className="config-input"
+                                                value={configValues[field.key] || ''}
+                                                onChange={(e) => setConfigValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                                            >
+                                                <option value="">— Select —</option>
+                                                {field.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                className="config-input"
+                                                type={field.type}
+                                                placeholder={field.placeholder || ''}
+                                                value={configValues[field.key] || ''}
+                                                onChange={(e) => setConfigValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                                <button className="btn-primary config-apply-btn" onClick={applyConfig}>
+                                    Apply Config
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* ── Run Log Panel ── */}
+            {showLog && (
+                <div className="run-log-panel glass-panel">
+                    <div className="run-log-header" onClick={() => setShowLog((v) => !v)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {runStatus === 'running' && <Loader size={14} className="spin" style={{ color: '#6366f1' }} />}
+                            {runStatus === 'done' && <CheckCircle size={14} style={{ color: '#22c55e' }} />}
+                            {runStatus === 'error' && <XCircle size={14} style={{ color: '#ef4444' }} />}
+                            <span className="run-log-title">
+                                {runStatus === 'running' ? 'Executing workflow…' : runStatus === 'done' ? `Completed — ${runLog.length} nodes` : 'Execution Error'}
+                            </span>
+                        </div>
+                        <ChevronDown size={14} style={{ color: '#64748b' }} />
+                    </div>
+
+                    <div className="run-log-body">
+                        {runLog.length === 0 && runStatus === 'running' && (
+                            <div className="run-log-wait">Calling AI nodes, please wait…</div>
+                        )}
+                        {runLog.map((entry, i) => (
+                            <div key={i} className={`run-log-entry ${entry.error ? 'run-log-entry--error' : 'run-log-entry--ok'}`}>
+                                <div className="run-log-entry-header" onClick={() => toggleLogItem(i)}>
+                                    <span className="run-log-icon">{LOG_ICONS[entry.node_type] || '🔷'}</span>
+                                    <span className="run-log-label">{entry.label}</span>
+                                    <span className="run-log-tag">{entry.node_type}</span>
+                                    {expandedLogItems.has(i)
+                                        ? <ChevronDown size={12} style={{ color: '#64748b', marginLeft: 'auto' }} />
+                                        : <ChevronRight size={12} style={{ color: '#64748b', marginLeft: 'auto' }} />
+                                    }
+                                </div>
+                                {expandedLogItems.has(i) && (
+                                    <div className="run-log-entry-body">
+                                        {entry.error
+                                            ? <pre className="run-log-error">{entry.error}</pre>
+                                            : <pre className="run-log-output">{JSON.stringify(entry.output, null, 2)}</pre>
+                                        }
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
