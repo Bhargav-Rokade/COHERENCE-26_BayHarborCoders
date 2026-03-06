@@ -265,6 +265,7 @@ function WorkflowBuilder() {
                                     border: '1px solid #334155',
                                     borderRadius: '16px',
                                     padding: '40px',
+                                    display: 'none',
                                     maxWidth: '400px',
                                     textAlign: 'center',
                                     boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
