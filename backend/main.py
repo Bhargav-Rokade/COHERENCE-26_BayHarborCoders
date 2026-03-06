@@ -62,9 +62,9 @@ class WorkflowABTestRequest(BaseModel):
 
 # Create the FastAPI application instance
 app = FastAPI(
-    title="Coherence API",
+    title="LeadChain API",
     description="AI-powered outreach workflow automation platform",
-    version="0.1.0",
+    version="2.0.0",
 )
 
 # ---------------------

@@ -1,6 +1,6 @@
-# Coherence — AI-Powered Intelligent Outreach Workflow Automation Engine
+# LeadChain — AI-Powered Intelligent Outreach Workflow Automation Engine
 
-Coherence is a comprehensive workflow-driven automation platform designed to execute highly personalized outreach sequences based on user-defined logic. Designed for sales and outreach teams, it features a visual drag-and-drop workflow builder, AI-generated messaging, intelligent delay mechanisms, and human-like behavioral simulation to test outreach strategies safely.
+LeadChain is a comprehensive workflow-driven automation platform designed to execute highly personalized outreach sequences based on user-defined logic. Designed for sales and outreach teams, it features a visual drag-and-drop workflow builder, AI-generated messaging, intelligent delay mechanisms, and human-like behavioral simulation to test outreach strategies safely.
 
 ## 🚀 Key Features
 
@@ -29,7 +29,7 @@ Manage your contacts and gain high-level demographic insights.
 
 ## 🛠️ Technology Stack
 
-*   **Frontend:** React 18, TypeScript, Vite, `lucide-react` (icons), `@xyflow/react` (node canvas).
+*   **Frontend:** React 18, TypeScript, Vite, `lucide-react` (icons), `@xyflow/react` (node canvas), `react-markdown` (AI output).
 *   **Backend:** Python 3, FastAPI, SQLite (SQLAlchemy ORM), Pandas (analytics), OpenAI API (gpt-4o-mini).
 
 ---
@@ -104,6 +104,18 @@ Navigate to the **Workflow Builder**.
 *   Hit **Run Simulation**. The engine will execute the nodes sequentially on a simulated lead, generating a personalized email and simulating a human reply based on the chosen persona (e.g., "Skeptical CTO").
 *   Use the **Log Timeline** on the right side to inspect the exact payload, AI intent analysis, and lead scoring at every step.
 *   Name your workflow and click **Save**.
+
+---
+
+## ✨ What's New in Version 2.0.0
+
+The "Workflow & Intelligence" update brings massive agentic capabilities:
+
+1.  **AI Workflow Designer:** No more manual dragging. Describe your campaign goal in plain English (e.g., *"Build a 3-step reactivation sequence for inactive customers"*), and the AI will automatically construct the entire node-graph for you.
+2.  **A/B Testing Hub:** Split-test your outreach messaging. Define two different prompt variants, run them against your workflows, and receive a side-by-side **AI Verdict** on which approach is more effective for conversion.
+3.  **Real Data Integration:** Workflows now pull live data from your **Lead Database**. The "Load Lead" node features a dynamic picker to test sequences on actual contacts.
+4.  **Markdown Powered Outputs:** All AI-generated campaigns and A/B test verdicts now render in rich Markdown for better readability.
+5.  **Smart Personalization:** AI nodes are now natively integrated with your structured Knowledge Base (Company Description, Value Prop, etc.) for high-fidelity messaging.
 
 ---
 *Built for the Coherence-26 Hackathon by Bay Harbor Coders.*

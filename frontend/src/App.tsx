@@ -41,7 +41,7 @@ function App() {
             <div className="logo-icon">
               <Zap size={18} />
             </div>
-            <span className="logo-text">Coherence</span>
+            <span className="logo-text">LeadChain</span>
           </div>
         </div>
 
