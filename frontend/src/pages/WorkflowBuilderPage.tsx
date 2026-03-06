@@ -24,28 +24,28 @@ const NODE_TYPES = [
         label: 'Trigger',
         description: 'Starts the workflow',
         icon: Zap,
-        color: '#34d399', /* green */
+        color: '#10b981', /* green */
     },
     {
         type: 'ai_generate',
         label: 'AI Generate',
         description: 'Generate content with AI',
         icon: Brain,
-        color: '#a78bfa', /* purple */
+        color: '#6366f1', /* indigo */
     },
     {
         type: 'action',
         label: 'Send Email',
         description: 'Send an outreach email',
         icon: Mail,
-        color: '#60a5fa', /* blue */
+        color: '#3b82f6', /* blue */
     },
     {
         type: 'wait',
         label: 'Wait / Delay',
         description: 'Add a timed delay',
         icon: Clock,
-        color: '#fbbf24', /* yellow */
+        color: '#f59e0b', /* amber/yellow */
     },
     {
         type: 'condition',
@@ -59,7 +59,7 @@ const NODE_TYPES = [
         label: 'End',
         description: 'Terminate the workflow',
         icon: Square,
-        color: '#f87171', /* red */
+        color: '#ef4444', /* red */
     },
 ]
 

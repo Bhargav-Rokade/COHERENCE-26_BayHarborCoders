@@ -15,10 +15,10 @@ import './DashboardPage.css'
 
 /* Summary statistics displayed as cards */
 const MOCK_STATS = [
-    { label: 'Total Runs', value: '24', icon: Activity, color: '#6366f1' },
-    { label: 'Active', value: '3', icon: Clock, color: '#fbbf24' },
-    { label: 'Completed', value: '18', icon: CheckCircle, color: '#34d399' },
-    { label: 'Failed', value: '3', icon: XCircle, color: '#f87171' },
+    { label: 'Total Runs', value: '24', icon: Activity, color: '#4f46e5' }, /* deep indigo */
+    { label: 'Active', value: '3', icon: Clock, color: '#f59e0b' }, /* amber */
+    { label: 'Completed', value: '18', icon: CheckCircle, color: '#10b981' }, /* green */
+    { label: 'Failed', value: '3', icon: XCircle, color: '#ef4444' }, /* red */
 ]
 
 /* Mock workflow run data — resembles what a real monitoring table would show */

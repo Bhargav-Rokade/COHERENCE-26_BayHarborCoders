@@ -1,64 +1,107 @@
 /*
-  App.css — Styles for the App shell (sidebar + main layout)
+  App.css — Styles for the App shell and collapsible sidebar
 */
 
-/* Main layout: sidebar on left, content on right */
+/* Main layout */
 .app-layout {
     display: flex;
     min-height: 100vh;
 }
 
-
-/* ---- Sidebar ---- */
+/* ---- Sidebar Base ---- */
 .sidebar {
     width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: var(--space-lg) 0;
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
     z-index: 100;
+    transition: width var(--transition-base);
+    overflow: hidden;
+    /* Important for hiding text smoothly when collapsing */
+    white-space: nowrap;
 }
 
-/* Logo section at top of sidebar */
+/* Collapsed state */
+.sidebar.collapsed {
+    width: 68px;
+}
+
+/* Header containing the hamburger menu and the logo */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-md);
+    margin-bottom: var(--space-md);
+    height: 64px;
+}
+
+/* The Hamburger toggle button */
+.menu-button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.menu-button:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+/* Logo container */
 .sidebar-logo {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: 0 var(--space-lg);
-    margin-bottom: var(--space-xl);
+    margin-left: var(--space-sm);
+    opacity: 1;
+    transition: opacity var(--transition-fast);
 }
 
+.sidebar.collapsed .sidebar-logo {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+/* Small square logo icon */
 .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--accent-gradient);
-    border-radius: var(--radius-md);
+    width: 28px;
+    height: 28px;
+    background: var(--accent-primary);
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
+    flex-shrink: 0;
 }
 
 .logo-text {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
     font-weight: 700;
-    background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 /* Navigation links container */
 .sidebar-nav {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
+    gap: 2px;
     padding: 0 var(--space-sm);
     flex: 1;
 }
@@ -67,7 +110,7 @@
 .nav-link {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-md);
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-md);
     color: var(--text-secondary);
@@ -75,29 +118,54 @@
     font-weight: 500;
     transition: all var(--transition-fast);
     text-decoration: none;
+    height: 40px;
 }
 
 .nav-link:hover {
     color: var(--text-primary);
-    background: var(--bg-surface);
+    background: var(--bg-primary);
 }
 
 /* Active page highlight */
 .nav-link-active {
-    color: var(--text-primary);
-    background: rgba(99, 102, 241, 0.12);
-    border-left: 3px solid var(--accent-primary);
+    color: var(--accent-primary);
+    background: #eff6ff;
+    /* Very light blue */
+}
+
+/* Fix icon alignment when collapsed */
+.nav-icon {
+    flex-shrink: 0;
+}
+
+/* Label text transition */
+.nav-label {
+    opacity: 1;
+    transition: opacity var(--transition-fast);
+}
+
+.sidebar.collapsed .nav-label {
+    opacity: 0;
+    visibility: hidden;
 }
 
 /* Sidebar footer */
 .sidebar-footer {
-    padding: var(--space-md) var(--space-lg);
+    padding: var(--space-md) var(--space-md);
     border-top: 1px solid var(--border-color);
+    text-align: center;
 }
 
 .sidebar-version {
     font-size: var(--font-size-xs);
     color: var(--text-muted);
+    opacity: 1;
+    transition: opacity var(--transition-fast);
+}
+
+.sidebar.collapsed .sidebar-version {
+    opacity: 0;
+    visibility: hidden;
 }
 
 
@@ -108,4 +176,10 @@
     padding: var(--space-xl) var(--space-2xl);
     min-height: 100vh;
     background: var(--bg-primary);
+    transition: margin-left var(--transition-base);
+}
+
+/* When sidebar is collapsed, main content expands to fill the space */
+.main-content.expanded {
+    margin-left: 68px;
 }
