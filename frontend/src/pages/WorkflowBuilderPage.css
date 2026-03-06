@@ -178,3 +178,22 @@
     color: var(--text-muted);
     font-size: var(--font-size-sm);
 }
+
+/* Editable workflow name in the header */
+.workflow-name-input {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    padding: 6px 12px;
+    min-width: 220px;
+    transition: border-color var(--transition-fast);
+    outline: none;
+}
+
+.workflow-name-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}

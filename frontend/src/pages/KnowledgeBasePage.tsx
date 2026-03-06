@@ -10,8 +10,8 @@
   - onChange: Fires every time the user types in the textarea
   - The component re-renders automatically when state changes
 */
-import { useState } from 'react'
-import { BookOpen, Save, CheckCircle, Info } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { BookOpen, Save, CheckCircle, Info, Loader2 } from 'lucide-react'
 import './KnowledgeBasePage.css'
 
 /* Max characters allowed in the knowledge base text */
@@ -32,14 +32,52 @@ function KnowledgeBasePage() {
 
     /* State to show a "saved" confirmation message */
     const [isSaved, setIsSaved] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [isSaving, setIsSaving] = useState(false)
+
+    /* Fetch initial knowledge base on mount */
+    useEffect(() => {
+        const fetchKb = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/knowledge-base')
+                if (response.ok) {
+                    const data = await response.json()
+                    setContent(data.content || '')
+                }
+            } catch (error) {
+                console.error('Failed to fetch knowledge base:', error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        fetchKb()
+    }, [])
 
     /* Handle the Save button click */
-    const handleSave = () => {
-        // For MVP, just show a confirmation. Later this will call the backend.
-        console.log('Knowledge base saved:', content)
-        setIsSaved(true)
-        // Hide the confirmation after 2 seconds
-        setTimeout(() => setIsSaved(false), 2000)
+    const handleSave = async () => {
+        setIsSaving(true)
+        try {
+            const response = await fetch('http://localhost:8000/api/v1/knowledge-base', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content }),
+            })
+
+            if (response.ok) {
+                setIsSaved(true)
+                // Hide the confirmation after 2 seconds
+                setTimeout(() => setIsSaved(false), 2000)
+            } else {
+                console.error('Failed to save knowledge base')
+            }
+        } catch (error) {
+            console.error('Error saving knowledge base:', error)
+        } finally {
+            setIsSaving(false)
+        }
     }
 
     /* Calculate how many characters remain */
@@ -70,23 +108,35 @@ function KnowledgeBasePage() {
                         </span>
                     </div>
 
-                    <textarea
-                        className="kb-textarea"
-                        value={content}
-                        onChange={(e) => {
-                            // Only update if within character limit
-                            if (e.target.value.length <= MAX_CHARS) {
-                                setContent(e.target.value)
-                            }
-                        }}
-                        placeholder="Enter your company information here...&#10;&#10;Example:&#10;We are a B2B SaaS company that provides AI-powered analytics for e-commerce businesses. Our platform helps online retailers understand customer behavior, optimize pricing, and increase conversion rates..."
-                        rows={14}
-                    />
+                    {isLoading ? (
+                        <div className="flex items-center justify-center p-8 text-gray-400">
+                            <Loader2 className="animate-spin mr-2" size={24} />
+                            Loading...
+                        </div>
+                    ) : (
+                        <textarea
+                            className="kb-textarea"
+                            value={content}
+                            onChange={(e) => {
+                                // Only update if within character limit
+                                if (e.target.value.length <= MAX_CHARS) {
+                                    setContent(e.target.value)
+                                }
+                            }}
+                            placeholder="Enter your company information here...&#10;&#10;Example:&#10;We are a B2B SaaS company that provides AI-powered analytics for e-commerce businesses. Our platform helps online retailers understand customer behavior, optimize pricing, and increase conversion rates..."
+                            rows={14}
+                        />
+                    )}
 
                     {/* Action buttons */}
                     <div className="editor-actions">
-                        <button className="btn-primary" onClick={handleSave} disabled={content.length === 0}>
-                            {isSaved ? (
+                        <button className="btn-primary" onClick={handleSave} disabled={content.length === 0 || isSaving || isLoading}>
+                            {isSaving ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Saving...
+                                </>
+                            ) : isSaved ? (
                                 <>
                                     <CheckCircle size={16} />
                                     Saved!
