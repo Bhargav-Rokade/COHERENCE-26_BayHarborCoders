@@ -59,11 +59,11 @@ def _topological_order(nodes: list, edges: list) -> list[str]:
 # Node handlers
 # ---------------------------------------------------------------------------
 
-def _call_openai(prompt: str, api_key: str, system: str = "You are an AI sales assistant.") -> str:
+def _call_openai(prompt: str, system: str = "You are an AI sales assistant.") -> str:
     """Call OpenAI chat completion and return the text response."""
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -96,7 +96,7 @@ def handle_load_lead(cfg: dict, state: dict, **_) -> dict:
     return {"lead": lead}
 
 
-def handle_ai_compose(cfg: dict, state: dict, api_key: str, kb: str, **_) -> dict:
+def handle_ai_compose(cfg: dict, state: dict, kb: str, **_) -> dict:
     lead = state.get("lead", {})
     goal = cfg.get("goal", "intro")
     tone = cfg.get("tone", "friendly")
@@ -112,12 +112,12 @@ def handle_ai_compose(cfg: dict, state: dict, api_key: str, kb: str, **_) -> dic
         "Use the company context above to personalize the email. "
         "Output ONLY the email body, no subject line."
     )
-    message = _call_openai(prompt, api_key)
+    message = _call_openai(prompt)
     state["message"] = message
     return {"message": message}
 
 
-def handle_personalize(cfg: dict, state: dict, api_key: str, **_) -> dict:
+def handle_personalize(cfg: dict, state: dict, **_) -> dict:
     lead = state.get("lead", {})
     msg = state.get("message", "")
     fields = cfg.get("personalization_fields", ["company", "industry", "role"])
@@ -128,7 +128,7 @@ def handle_personalize(cfg: dict, state: dict, api_key: str, **_) -> dict:
         f"Original message:\n{msg}\n\n"
         "Return ONLY the improved personalized message."
     )
-    personalized = _call_openai(prompt, api_key)
+    personalized = _call_openai(prompt)
     state["personalized_message"] = personalized
     return {"personalized_message": personalized}
 
@@ -163,7 +163,7 @@ def handle_check_reply(cfg: dict, state: dict, **_) -> dict:
     return {"reply_received": received, "reply_text": reply_text}
 
 
-def handle_persona_sim(cfg: dict, state: dict, api_key: str, **_) -> dict:
+def handle_persona_sim(cfg: dict, state: dict, **_) -> dict:
     persona = cfg.get("persona", "skeptical_cto")
     message = state.get("personalized_message") or state.get("message", "")
     persona_descriptions = {
@@ -173,14 +173,14 @@ def handle_persona_sim(cfg: dict, state: dict, api_key: str, **_) -> dict:
     }
     system = persona_descriptions.get(persona, "You are a busy professional receiving a sales email.")
     prompt = f"You just received this outreach message. Reply as this persona:\n\n{message}"
-    reply = _call_openai(prompt, api_key, system=system)
+    reply = _call_openai(prompt, system=system)
     state["reply"] = reply
     state["reply_text"] = reply
     state["reply_received"] = True
     return {"persona": persona, "reply": reply}
 
 
-def handle_ai_analyze(cfg: dict, state: dict, api_key: str, **_) -> dict:
+def handle_ai_analyze(cfg: dict, state: dict, **_) -> dict:
     reply_text = state.get("reply_text") or state.get("reply", "")
     analysis_type = cfg.get("analysis_type", "intent")
     prompt = (
@@ -188,7 +188,7 @@ def handle_ai_analyze(cfg: dict, state: dict, api_key: str, **_) -> dict:
         f"Reply: \"{reply_text}\"\n\n"
         "Respond with JSON only: {\"intent\": \"interested|neutral|reject\", \"confidence\": 0.0-1.0, \"summary\": \"one sentence\"}"
     )
-    raw = _call_openai(prompt, api_key)
+    raw = _call_openai(prompt)
     try:
         import re
         match = re.search(r'\{.*\}', raw, re.DOTALL)
@@ -261,7 +261,7 @@ NODE_HANDLERS = {
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def run_workflow(flow_definition: str, api_key: str | None = None, knowledge_base: str = "") -> dict:
+def run_workflow(flow_definition: str, knowledge_base: str = "") -> dict:
     """
     Execute a workflow from its JSON definition string.
 
@@ -275,9 +275,6 @@ def run_workflow(flow_definition: str, api_key: str | None = None, knowledge_bas
             "final_state": {...}
         }
     """
-    if not api_key:
-        api_key = os.getenv("OPENAI_API_KEY", "")
-
     try:
         flow = json.loads(flow_definition)
     except json.JSONDecodeError as e:
@@ -311,7 +308,7 @@ def run_workflow(flow_definition: str, api_key: str | None = None, knowledge_bas
             continue
 
         try:
-            output = handler(cfg=cfg, state=state, api_key=api_key, kb=knowledge_base)
+            output = handler(cfg=cfg, state=state, kb=knowledge_base)
             log.append({"node_id": node_id, "node_type": node_type, "label": label, "output": output, "error": None})
         except Exception as e:
             log.append({"node_id": node_id, "node_type": node_type, "label": label, "output": {}, "error": str(e)})

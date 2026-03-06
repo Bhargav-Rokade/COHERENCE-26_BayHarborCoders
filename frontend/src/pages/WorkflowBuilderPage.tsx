@@ -10,7 +10,7 @@ import {
     Zap, Database, Brain, Wand2, BarChart2,
     Send, Timer, Eye, Bot, GitBranch, TrendingUp, CheckSquare,
     Save, Plus, Play, ChevronDown, ChevronRight, X, Loader,
-    CheckCircle, XCircle, FolderOpen, Key,
+    CheckCircle, XCircle, FolderOpen,
 } from 'lucide-react'
 import { useCallback, useState, useEffect } from 'react'
 import {
@@ -141,8 +141,6 @@ function WorkflowBuilder() {
     const [configValues, setConfigValues] = useState<Record<string, string>>({})
 
     // Run simulation
-    const [apiKey, setApiKey] = useState('')
-    const [apiKeyVisible, setApiKeyVisible] = useState(false)
     const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
     const [runLog, setRunLog] = useState<any[]>([])
     const [expandedLogItems, setExpandedLogItems] = useState<Set<number>>(new Set())
@@ -279,11 +277,6 @@ function WorkflowBuilder() {
     /* ── Run simulation ── */
     const handleRun = async () => {
         if (!workflowId) return
-        if (!apiKey.trim()) {
-            alert('Please enter your OpenAI API key first.')
-            setApiKeyVisible(true)
-            return
-        }
         setRunStatus('running')
         setShowLog(true)
         setRunLog([])
@@ -292,7 +285,7 @@ function WorkflowBuilder() {
             const res = await fetch(`http://localhost:8000/api/v1/workflows/${workflowId}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ openai_api_key: apiKey }),
+                body: JSON.stringify({}), // Empty payload as API key is no longer sent from frontend
             })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data = await res.json()
@@ -381,12 +374,6 @@ function WorkflowBuilder() {
                         <Save size={14} /> {saveLabel}
                     </button>
 
-                    {/* API key toggle */}
-                    <button className={`btn-icon ${apiKey ? 'btn-icon--active' : ''}`}
-                        onClick={() => setApiKeyVisible((v) => !v)} title="Set OpenAI API Key">
-                        <Key size={14} />
-                    </button>
-
                     {/* Run */}
                     <button
                         className={`btn-run ${runStatus === 'running' ? 'btn-run--running' : ''} ${runStatus === 'error' ? 'btn-run--error' : ''}`}
@@ -402,23 +389,6 @@ function WorkflowBuilder() {
                     </button>
                 </div>
             </div>
-
-            {/* ── API Key bar ── */}
-            {apiKeyVisible && (
-                <div className="api-key-bar glass-panel">
-                    <Key size={14} style={{ color: '#6366f1', flexShrink: 0 }} />
-                    <input
-                        className="api-key-input"
-                        type="password"
-                        placeholder="sk-…  (OpenAI API Key — used only for this session)"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                    />
-                    <button className="btn-primary btn-sm" onClick={() => setApiKeyVisible(false)}>
-                        Confirm
-                    </button>
-                </div>
-            )}
 
             {/* ── Builder layout ── */}
             <div className="wb-layout">

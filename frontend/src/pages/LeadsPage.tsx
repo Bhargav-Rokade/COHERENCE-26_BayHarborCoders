@@ -7,7 +7,8 @@
   3. Analytics metric cards (Pandas-powered via backend)
   4. AI Campaign Idea generator
 */
-import { useState, useCallback, useEffect, useRef, DragEvent } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { DragEvent } from 'react'
 import {
     Users, Upload, Search, Trash2, BarChart2,
     Sparkles, AlertCircle, CheckCircle, XCircle, Loader2, ChevronDown
@@ -78,8 +79,6 @@ export default function LeadsPage() {
     const [uploadError, setUploadError] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // AI Campaign state
-    const [apiKey, setApiKey] = useState('')
     const [campaignContext, setCampaignContext] = useState('')
     const [campaignIdeas, setCampaignIdeas] = useState('')
     const [campaignLoading, setCampaignLoading] = useState(false)
@@ -159,7 +158,6 @@ export default function LeadsPage() {
 
     // ---- AI Campaign Ideas ----
     const generateCampaign = async () => {
-        if (!apiKey.trim()) { setCampaignError('Please enter your OpenAI API key.'); return }
         setCampaignError(null)
         setCampaignLoading(true)
         setCampaignIdeas('')
@@ -167,7 +165,7 @@ export default function LeadsPage() {
             const res = await fetch(`${API_BASE}/campaign-ideas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ openai_api_key: apiKey, context: campaignContext || null }),
+                body: JSON.stringify({ context: campaignContext || null }),
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.detail || 'AI request failed')
@@ -409,15 +407,6 @@ export default function LeadsPage() {
 
                 {showCampaignPanel && (
                     <div className="campaign-body">
-                        <label className="field-label">OpenAI API Key</label>
-                        <input
-                            type="password"
-                            className="text-input"
-                            placeholder="sk-..."
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                        />
-
                         <label className="field-label" style={{ marginTop: '12px' }}>
                             Additional Context <span style={{ opacity: 0.5 }}>(optional)</span>
                         </label>

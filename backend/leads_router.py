@@ -28,7 +28,6 @@ router = APIRouter(prefix="/api/v1/leads", tags=["leads"])
 # ---------------------
 
 class CampaignRequest(BaseModel):
-    openai_api_key: str
     context: Optional[str] = None  # optional extra instructions from the user
 
 
@@ -269,7 +268,7 @@ Please provide:
 
 Be specific, actionable, and professional."""
 
-    client = OpenAI(api_key=body.openai_api_key)
+    client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-5-nano",
         messages=[{"role": "user", "content": prompt}]

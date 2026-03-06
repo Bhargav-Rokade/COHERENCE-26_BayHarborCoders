@@ -39,7 +39,6 @@ class StructuredKB(BaseModel):
 class TextExtractRequest(BaseModel):
     """Send raw text / paragraph for AI extraction."""
     text: str
-    openai_api_key: Optional[str] = None
 
 
 class QuestionnaireRequest(BaseModel):
@@ -49,7 +48,6 @@ class QuestionnaireRequest(BaseModel):
     target_customers: Optional[str] = ""
     value_proposition: Optional[str] = ""
     messaging_tone: Optional[str] = ""
-    openai_api_key: Optional[str] = None
 
 
 class SaveStructuredRequest(BaseModel):
@@ -123,11 +121,11 @@ Return your response as a valid JSON object with EXACTLY these keys:
 IMPORTANT: Return ONLY the JSON object. No other text before or after."""
 
 
-def _call_openai_extract(text: str, api_key: str) -> dict:
+def _call_openai_extract(text: str) -> dict:
     """Call OpenAI to extract structured company data from raw text."""
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -181,11 +179,11 @@ Rules:
 - Return ONLY the JSON object. No other text."""
 
 
-def _call_openai_refine(answers: dict, api_key: str) -> dict:
+def _call_openai_refine(answers: dict) -> dict:
     """Call OpenAI to refine questionnaire answers."""
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -295,25 +293,16 @@ def update_knowledge_base_legacy(data: dict, db: Session = Depends(get_db)):
 @router.post("/extract-text")
 def extract_from_text(req: TextExtractRequest, db: Session = Depends(get_db)):
     """Extract structured data from raw text / paragraph using AI."""
-    api_key = req.openai_api_key or os.getenv("OPENAI_API_KEY", "")
-    if not api_key or api_key == "sk-your-key-here":
-        raise HTTPException(status_code=400, detail="OpenAI API key is required. Set it in .env or provide it in the request.")
-
-    structured = _call_openai_extract(req.text, api_key)
+    structured = _call_openai_extract(req.text)
     return {"status": "success", "structured": structured}
 
 
 @router.post("/extract-file")
 async def extract_from_file(
     file: UploadFile = File(...),
-    openai_api_key: str = Form(""),
     db: Session = Depends(get_db),
 ):
     """Upload a PDF / DOCX / TXT file, extract text, then use AI to structure it."""
-    api_key = openai_api_key or os.getenv("OPENAI_API_KEY", "")
-    if not api_key or api_key == "sk-your-key-here":
-        raise HTTPException(status_code=400, detail="OpenAI API key is required.")
-
     filename = (file.filename or "").lower()
     file_bytes = await file.read()
 
@@ -329,17 +318,13 @@ async def extract_from_file(
     if not raw_text.strip():
         raise HTTPException(status_code=400, detail="Could not extract any text from the uploaded file.")
 
-    structured = _call_openai_extract(raw_text, api_key)
+    structured = _call_openai_extract(raw_text)
     return {"status": "success", "extracted_text": raw_text[:2000], "structured": structured}
 
 
 @router.post("/refine-questionnaire")
 def refine_questionnaire(req: QuestionnaireRequest, db: Session = Depends(get_db)):
     """Take questionnaire answers and refine them using AI."""
-    api_key = req.openai_api_key or os.getenv("OPENAI_API_KEY", "")
-    if not api_key or api_key == "sk-your-key-here":
-        raise HTTPException(status_code=400, detail="OpenAI API key is required.")
-
     answers = {
         "company_description": req.company_description or "Not specified",
         "product_offering": req.product_offering or "Not specified",
@@ -348,7 +333,7 @@ def refine_questionnaire(req: QuestionnaireRequest, db: Session = Depends(get_db
         "messaging_tone": req.messaging_tone or "Not specified",
     }
 
-    refined = _call_openai_refine(answers, api_key)
+    refined = _call_openai_refine(answers)
     return {"status": "success", "structured": refined}
 
 

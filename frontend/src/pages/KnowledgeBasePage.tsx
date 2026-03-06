@@ -13,7 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
     BookOpen, Save, CheckCircle, Loader2, FileText,
     Upload, ClipboardList, Type, Sparkles, X, AlertCircle,
-    Building2, Package, Target, Award, MessageCircle, Key, FileCheck
+    Building2, Package, Target, Award, MessageCircle, FileCheck
 } from 'lucide-react'
 import './KnowledgeBasePage.css'
 
@@ -87,7 +87,6 @@ function KnowledgeBasePage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [dragOver, setDragOver] = useState(false)
 
-    const [apiKey, setApiKey] = useState('')
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -132,7 +131,6 @@ function KnowledgeBasePage() {
     // --- AI Extract from Text ---
     const handleExtractFromText = async () => {
         if (!textContent.trim()) return
-        if (!apiKey) { setError('Please enter your OpenAI API key above.'); return }
 
         setIsProcessing(true)
         setError(null)
@@ -140,7 +138,7 @@ function KnowledgeBasePage() {
             const res = await fetch(`${API_BASE}/extract-text`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: textContent, openai_api_key: apiKey }),
+                body: JSON.stringify({ text: textContent }),
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.detail || 'Extraction failed')
@@ -157,14 +155,12 @@ function KnowledgeBasePage() {
     // --- AI Extract from File ---
     const handleExtractFromFile = async () => {
         if (!selectedFile) return
-        if (!apiKey) { setError('Please enter your OpenAI API key above.'); return }
 
         setIsProcessing(true)
         setError(null)
         try {
             const formData = new FormData()
             formData.append('file', selectedFile)
-            formData.append('openai_api_key', apiKey)
 
             const res = await fetch(`${API_BASE}/extract-file`, {
                 method: 'POST',
@@ -186,7 +182,6 @@ function KnowledgeBasePage() {
     const handleRefineQuestionnaire = async () => {
         const hasAny = Object.values(questionnaire).some((v) => v.trim() !== '')
         if (!hasAny) { setError('Please answer at least one question.'); return }
-        if (!apiKey) { setError('Please enter your OpenAI API key above.'); return }
 
         setIsProcessing(true)
         setError(null)
@@ -194,7 +189,7 @@ function KnowledgeBasePage() {
             const res = await fetch(`${API_BASE}/refine-questionnaire`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...questionnaire, openai_api_key: apiKey }),
+                body: JSON.stringify({ ...questionnaire }),
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.detail || 'Refinement failed')
@@ -280,20 +275,6 @@ function KnowledgeBasePage() {
                 </p>
             </div>
 
-            {/* API Key Banner */}
-            <div className="api-key-banner">
-                <Key size={20} className="banner-icon" />
-                <span className="banner-text">
-                    Enter your OpenAI API key to enable AI-powered extraction
-                </span>
-                <input
-                    type="password"
-                    placeholder="sk-..."
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                />
-            </div>
-
             {/* Error Banner */}
             {error && (
                 <div className="error-banner">
@@ -364,7 +345,7 @@ function KnowledgeBasePage() {
                                         <button
                                             className="btn-primary"
                                             onClick={handleExtractFromText}
-                                            disabled={!textContent.trim() || !apiKey}
+                                            disabled={!textContent.trim()}
                                         >
                                             <Sparkles size={16} /> Extract with AI
                                         </button>
@@ -401,7 +382,7 @@ function KnowledgeBasePage() {
                                         <button
                                             className="btn-primary"
                                             onClick={handleRefineQuestionnaire}
-                                            disabled={!Object.values(questionnaire).some((v) => v.trim()) || !apiKey}
+                                            disabled={!Object.values(questionnaire).some((v) => v.trim())}
                                         >
                                             <Sparkles size={16} /> Refine with AI
                                         </button>
@@ -465,7 +446,7 @@ function KnowledgeBasePage() {
                                         <button
                                             className="btn-primary"
                                             onClick={handleExtractFromFile}
-                                            disabled={!selectedFile || !apiKey}
+                                            disabled={!selectedFile}
                                         >
                                             <Sparkles size={16} /> Extract from File
                                         </button>

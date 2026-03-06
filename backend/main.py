@@ -9,6 +9,12 @@ To run:
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
