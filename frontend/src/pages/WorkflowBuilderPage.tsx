@@ -50,6 +50,7 @@ const PALETTE_CATEGORIES = [
         color: '#3b82f6',
         nodes: [
             { type: 'send_message', label: 'Outreach Sender', description: 'Send via email / LinkedIn', iconName: 'Send', color: '#3b82f6' },
+            { type: 'send_email', label: 'Send Email (Gmail)', description: 'Send real email via Gmail SMTP', iconName: 'Send', color: '#3b82f6' },
             { type: 'delay', label: 'Delay / Pacing', description: 'Add human-like delay', iconName: 'Timer', color: '#f59e0b' },
             { type: 'check_reply', label: 'Response Monitor', description: 'Check if lead replied', iconName: 'Eye', color: '#0ea5e9' },
         ],
@@ -94,6 +95,11 @@ const NODE_CONFIG_FIELDS: Record<string, Array<{ key: string; label: string; typ
         { key: 'channel', label: 'Channel', type: 'select', options: ['email', 'linkedin', 'sms'] },
         { key: 'message_field', label: 'Message Source Field', type: 'text', placeholder: 'personalized_message' },
     ],
+    send_email: [
+        { key: 'recipient', label: 'Recipient Email', type: 'text', placeholder: 'Leave blank to use lead email' },
+        { key: 'subject', label: 'Subject', type: 'text', placeholder: 'Outreach Subject' },
+        { key: 'message_field', label: 'Message Source Field', type: 'text', placeholder: 'personalized_message' },
+    ],
     delay: [
         { key: 'delay_type', label: 'Delay Type', type: 'select', options: ['fixed', 'random'] },
         { key: 'min_seconds', label: 'Min Seconds', type: 'number', placeholder: '60' },
@@ -122,7 +128,7 @@ const nodeTypes = { custom: CustomNode }
 
 const LOG_ICONS: Record<string, string> = {
     trigger: '⚡', load_lead: '📋', ai_compose: '🧠', personalize: '✨',
-    ai_analyze: '📊', send_message: '📨', delay: '⏱', check_reply: '👁',
+    ai_analyze: '📊', send_message: '📨', send_email: '📧', delay: '⏱', check_reply: '👁',
     persona_sim: '🤖', condition: '🔀', lead_score: '📈', update_status: '🏷',
 }
 

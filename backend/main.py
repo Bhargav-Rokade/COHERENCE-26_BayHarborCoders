@@ -226,9 +226,7 @@ def run_workflow_endpoint(workflow_id: int, body: WorkflowRunRequest, db: Sessio
         raise HTTPException(status_code=400, detail="Workflow has no flow definition")
 
     # Resolve API key: body > env var
-    api_key = (body.openai_api_key or "").strip() or os.getenv("OPENAI_API_KEY", "")
-    if not api_key:
-        raise HTTPException(status_code=400, detail="No OpenAI API key available. Set OPENAI_API_KEY in .env or pass openai_api_key in the request body.")
+    api_key = (body.openai_api_key or "").strip() or os.getenv("OPENAI_API_KEY", "dummy_key")
 
     # Fetch the company knowledge base (both raw + structured)
     settings = db.query(CompanySettings).first()

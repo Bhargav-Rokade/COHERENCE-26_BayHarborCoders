@@ -208,6 +208,42 @@ def handle_delay(cfg: dict, state: dict, **_) -> dict:
     return {"delay_completed": True, "simulated_wait_seconds": wait}
 
 
+def handle_send_email(cfg: dict, state: dict, **_) -> dict:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    lead = state.get("lead", {})
+    recipient = cfg.get("recipient", "") or lead.get("email", "")
+    subject = cfg.get("subject", "Automated Outreach")
+    msg_field = cfg.get("message_field", "personalized_message")
+    message = state.get(msg_field) or state.get("personalized_message") or state.get("message", "(no message)")
+
+    gmail_user = os.getenv("GMAIL_USER", "")
+    gmail_password = os.getenv("GMAIL_APP_PASSWORD", "")
+
+    if not recipient or not gmail_user or not gmail_password:
+        return {"error": "Missing recipient or Gmail credentials in backend", "sent": False}
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = gmail_user
+        msg['To'] = recipient
+        msg['Subject'] = subject
+        msg.attach(MIMEText(message, 'plain'))
+
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(gmail_user, gmail_password)
+        server.send_message(msg)
+        server.quit()
+
+        state["sent"] = True
+        return {"sent": True, "recipient": recipient, "subject": subject, "message_preview": message[:100]}
+    except Exception as e:
+        return {"error": str(e), "sent": False}
+
+
 def handle_check_reply(cfg: dict, state: dict, **_) -> dict:
     received = random.random() > 0.4
     reply_text = "Thanks for reaching out! I'd like to learn more about this." if received else ""
@@ -313,6 +349,7 @@ NODE_HANDLERS = {
     "condition":     handle_condition,
     "lead_score":    handle_lead_score,
     "update_status": handle_update_status,
+    "send_email":    handle_send_email,
     # Legacy aliases
     "ai_generate":   handle_ai_compose,
     "action":        handle_send_message,
