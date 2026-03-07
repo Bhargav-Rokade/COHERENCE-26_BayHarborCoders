@@ -64,7 +64,7 @@ function App() {
 
         {/* Footer area in sidebar */}
         <div className="sidebar-footer">
-          <p className="sidebar-version">v0.1.0</p>
+          <p className="sidebar-version">v0.2.0</p>
         </div>
       </aside>
 

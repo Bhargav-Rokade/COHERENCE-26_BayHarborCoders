@@ -1,84 +1,95 @@
 /*
   DashboardPage.tsx — Visualization Dashboard Module
 
-  Displays workflow execution data in a monitoring-style layout.
-  For the MVP, all data is mock/hardcoded. In a later phase,
-  this will pull from the FastAPI backend.
-
-  Key concepts:
-  - MOCK_STATS: Summary statistics shown as cards at the top
-  - MOCK_RUNS: Simulated workflow execution records
-  - MOCK_LOGS: Simulated execution log entries
+  Displays high-level platform statistics and recent lead activity,
+  fetching actual data from the FastAPI backend.
 */
-import { BarChart3, Activity, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { BarChart3, Users, GitBranch, Database, BookOpen, Activity, AlertCircle } from 'lucide-react'
 import './DashboardPage.css'
 
-/* Summary statistics displayed as cards */
-const MOCK_STATS = [
-    { label: 'Total Runs', value: '24', icon: Activity, color: '#4f46e5' }, /* deep indigo */
-    { label: 'Active', value: '3', icon: Clock, color: '#f59e0b' }, /* amber */
-    { label: 'Completed', value: '18', icon: CheckCircle, color: '#10b981' }, /* green */
-    { label: 'Failed', value: '3', icon: XCircle, color: '#ef4444' }, /* red */
-]
-
-/* Mock workflow run data — resembles what a real monitoring table would show */
-const MOCK_RUNS = [
-    { lead: 'John Smith', workflow: 'Cold Outreach', step: 'Follow-up Email', status: 'waiting' },
-    { lead: 'Sarah Chen', workflow: 'Cold Outreach', step: 'AI Generate', status: 'active' },
-    { lead: 'Mike Johnson', workflow: 'Re-engagement', step: 'End', status: 'completed' },
-    { lead: 'Emily Davis', workflow: 'Cold Outreach', step: 'Send Email', status: 'active' },
-    { lead: 'Alex Turner', workflow: 'Demo Follow-up', step: 'Condition Check', status: 'failed' },
-]
-
-/* Mock execution log entries — chronological events */
-const MOCK_LOGS = [
-    { time: '10:01 AM', lead: 'John Smith', event: 'Email Generated', type: 'info' },
-    { time: '10:02 AM', lead: 'John Smith', event: 'Email Sent', type: 'success' },
-    { time: '10:05 AM', lead: 'John Smith', event: 'Waiting (5 min delay)', type: 'info' },
-    { time: '10:08 AM', lead: 'Sarah Chen', event: 'Workflow Started', type: 'info' },
-    { time: '10:09 AM', lead: 'Sarah Chen', event: 'AI Generating Message...', type: 'info' },
-    { time: '10:12 AM', lead: 'Mike Johnson', event: 'Workflow Completed', type: 'success' },
-    { time: '10:15 AM', lead: 'Alex Turner', event: 'Condition Failed — No Reply', type: 'error' },
-    { time: '10:18 AM', lead: 'Emily Davis', event: 'Email Generated', type: 'info' },
-]
-
-/*
-  Helper function to pick the right CSS class for a status badge.
-  Maps status strings to badge color classes defined in index.css.
-*/
-function getStatusBadgeClass(status: string): string {
-    switch (status) {
-        case 'active': return 'badge badge-info'
-        case 'waiting': return 'badge badge-warning'
-        case 'completed': return 'badge badge-success'
-        case 'failed': return 'badge badge-error'
-        default: return 'badge'
+interface DashboardStats {
+    summary: {
+        total_leads: number
+        total_workflows: number
+        kb_configured: boolean
+        top_lead_source: string
     }
-}
-
-function getLogTypeClass(type: string): string {
-    switch (type) {
-        case 'success': return 'log-success'
-        case 'error': return 'log-error'
-        default: return ''
-    }
+    recent_leads: Array<{
+        name: string
+        company: string
+        industry: string
+        source: string
+        created_at: string
+    }>
+    lead_sources: Array<{
+        name: string
+        value: number
+    }>
 }
 
 function DashboardPage() {
+    const [data, setData] = useState<DashboardStats | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        // Fetch real stats from the backend
+        fetch('http://localhost:8000/api/v1/dashboard/stats')
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok')
+                return res.json()
+            })
+            .then(json => {
+                setData(json)
+                setLoading(false)
+            })
+            .catch(err => {
+                console.error('Failed to load dashboard data:', err)
+                setError('Failed to load dashboard data. Ensure the backend is running.')
+                setLoading(false)
+            })
+    }, [])
+
+    if (loading) {
+        return (
+            <div className="dash-page" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity className="spinner" size={24} style={{ animation: 'spin 2s linear infinite' }} />
+                <span style={{ color: 'var(--text-secondary)' }}>Loading dashboard statistics...</span>
+            </div>
+        )
+    }
+
+    if (error || !data) {
+        return (
+            <div className="dash-page error" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--status-error)' }}>
+                <AlertCircle size={24} /> {error}
+            </div>
+        )
+    }
+
+    /* Map API summary data to UI cards */
+    const STATS_CARDS = [
+        { label: 'Total Leads', value: data.summary.total_leads, icon: Users, color: '#4f46e5' }, /* deep indigo */
+        { label: 'Workflows', value: data.summary.total_workflows, icon: GitBranch, color: '#f59e0b' }, /* amber */
+        { label: 'KB Status', value: data.summary.kb_configured ? 'Ready' : 'Pending', icon: BookOpen, color: data.summary.kb_configured ? '#10b981' : '#ef4444' }, /* green/red */
+        { label: 'Top Source', value: data.summary.top_lead_source, icon: Database, color: '#0ea5e9' }, /* sky blue */
+    ]
+
     return (
         <div className="dash-page">
             {/* Page Header */}
             <div className="page-header">
                 <h1>
                     <BarChart3 size={28} style={{ verticalAlign: 'middle', marginRight: '12px' }} />
-                    Dashboard
+                    Platform Overview
                 </h1>
-                <p>Monitor workflow execution, track lead progression, and review logs.</p>
+                <p>Monitor platform growth, database statistics, and recent lead activity.</p>
             </div>
 
             {/* ---- Summary Stat Cards ---- */}
             <div className="stat-cards">
-                {MOCK_STATS.map((stat) => (
+                {STATS_CARDS.map((stat) => (
                     <div key={stat.label} className="stat-card glass-panel">
                         <div className="stat-icon" style={{ color: stat.color }}>
                             <stat.icon size={22} />
@@ -91,50 +102,45 @@ function DashboardPage() {
                 ))}
             </div>
 
-            {/* ---- Two-column layout: Runs table + Logs ---- */}
-            <div className="dash-grid">
-                {/* Workflow Runs Table */}
+            {/* ---- Recent Leads Table ---- */}
+            <div className="dash-grid" style={{ gridTemplateColumns: '1fr' }}>
                 <div className="glass-panel">
-                    <h3 className="section-title">Workflow Runs</h3>
+                    <h3 className="section-title">Recent Leads</h3>
                     <div className="table-wrapper">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Lead</th>
-                                    <th>Workflow</th>
-                                    <th>Current Step</th>
-                                    <th>Status</th>
+                                    <th>Lead Name</th>
+                                    <th>Company</th>
+                                    <th>Industry</th>
+                                    <th>Source</th>
+                                    <th>Added On</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {MOCK_RUNS.map((run, index) => (
-                                    <tr key={index}>
-                                        <td className="lead-name">{run.lead}</td>
-                                        <td>{run.workflow}</td>
-                                        <td>{run.step}</td>
-                                        <td>
-                                            <span className={getStatusBadgeClass(run.status)}>
-                                                {run.status}
-                                            </span>
+                                {data.recent_leads.length > 0 ? (
+                                    data.recent_leads.map((lead, index) => (
+                                        <tr key={index}>
+                                            <td className="lead-name">{lead.name}</td>
+                                            <td>{lead.company}</td>
+                                            <td>{lead.industry}</td>
+                                            <td>
+                                                <span className="badge badge-info">
+                                                    {lead.source}
+                                                </span>
+                                            </td>
+                                            <td style={{ color: 'var(--text-muted)' }}>{lead.created_at}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                            No leads have been ingested yet.
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-
-                {/* Execution Logs */}
-                <div className="glass-panel">
-                    <h3 className="section-title">Execution Logs</h3>
-                    <div className="logs-list">
-                        {MOCK_LOGS.map((log, index) => (
-                            <div key={index} className={`log-entry ${getLogTypeClass(log.type)}`}>
-                                <span className="log-time">{log.time}</span>
-                                <span className="log-lead">{log.lead}</span>
-                                <span className="log-event">{log.event}</span>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>

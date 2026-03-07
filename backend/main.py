@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 
@@ -110,6 +111,52 @@ def api_status():
             "leads_intelligence": "initialized",
         },
     }
+
+# ---------------------
+# Dashboard API
+# ---------------------
+@app.get("/api/v1/dashboard/stats")
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    """Fetch high-level statistical highlights of the platform's data."""
+    total_leads = db.query(Lead).count()
+    total_workflows = db.query(Workflow).count()
+    
+    settings = db.query(CompanySettings).first()
+    kb_configured = bool(settings and (settings.knowledge_base_text or settings.company_description))
+    
+    # Recent leads
+    recent_leads_q = db.query(Lead).order_by(Lead.created_at.desc()).limit(10).all()
+    recent_leads = [
+        {
+            "name": f"{l.first_name or ''} {l.last_name or ''}".strip() or l.email,
+            "company": l.company or "Unknown",
+            "industry": l.industry or "-",
+            "source": l.lead_source or "Unknown",
+            "created_at": l.created_at.strftime("%Y-%m-%d %H:%M") if l.created_at else "-"
+        }
+        for l in recent_leads_q
+    ]
+    
+    # Lead Sources Distribution
+    sources_q = db.query(Lead.lead_source, func.count(Lead.id)).group_by(Lead.lead_source).all()
+    lead_sources = [{"name": s[0] or "Unknown", "value": s[1]} for s in sources_q]
+    
+    # Top lead source
+    top_source = "None"
+    if lead_sources:
+        top_source = sorted(lead_sources, key=lambda x: x["value"], reverse=True)[0]["name"]
+        
+    return {
+        "summary": {
+            "total_leads": total_leads,
+            "total_workflows": total_workflows,
+            "kb_configured": kb_configured,
+            "top_lead_source": top_source
+        },
+        "recent_leads": recent_leads,
+        "lead_sources": lead_sources
+    }
+
 
 # Knowledge Base API — now handled by knowledge_base_router.py
 
