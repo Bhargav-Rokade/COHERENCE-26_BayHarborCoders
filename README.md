@@ -2,13 +2,15 @@
 
 LeadChain is a comprehensive workflow-driven automation platform designed to execute highly personalized outreach sequences based on user-defined logic. Designed for sales and outreach teams, it features a visual drag-and-drop workflow builder, AI-generated messaging, intelligent delay mechanisms, and human-like behavioral simulation to test outreach strategies safely.
 
-## 🚀 Key Features
+## A) Key Features
 
 ### 1. 🧠 Company Knowledge Base
 Context is everything. The Knowledge Base module allows you to define your company's core messaging, value propositions, and perfect customer profile so the AI knows exactly how to sell your product.
 *   **Three Input Modes:** Paste text directly, fill out a guided questionnaire, or upload documents (.pdf, .docx, .txt).
 *   **AI Extraction:** Automatically extracts key structured parameters (description, product offering, target customers, value proposition, tone) from unstructured input.
 *   **Persistent Storage:** Saves your company context to the database to be injected into automated outreach workflows.
+<img width="1919" height="869" alt="image" src="https://github.com/user-attachments/assets/66887263-89e4-4b9e-9103-499f71854376" />
+
 
 ### 2. ⚡ Visual Workflow Designer
 A powerful, React Flow-powered drag-and-drop canvas to build branching outreach sequences.
@@ -18,23 +20,28 @@ A powerful, React Flow-powered drag-and-drop canvas to build branching outreach 
     *   **AI Nodes:** AI Compose (generate emails), AI Personalize (customize based on lead data), AI Analyze (intent detection), and Persona Simulation (simulate replies).
 *   **Simulation Engine:** Test your workflows instantly using AI-simulated personas (e.g., "Skeptical CTO" or "Busy Founder") to see how your sequence performs before going live.
 *   **State Persistence:** Save, load, update, and manage multiple unique workflows in the database.
+<img width="1919" height="865" alt="image" src="https://github.com/user-attachments/assets/fe905203-4a3b-4397-a51b-8a56138d7acc" />
+<img width="1919" height="859" alt="image" src="https://github.com/user-attachments/assets/d355c116-3f09-4607-82fc-ff1174b9c6f3" />
+
 
 ### 3. 🎯 Lead Intelligence
 Manage your contacts and gain high-level demographic insights.
 *   **Smart Ingestion:** Upload `.csv` or `.xlsx` files. The system idempotently handles ingestion, skipping duplicates.
 *   **Analytics Dashboard:** Pandas-powered server-side aggregations visualize your leads by Top Industries, Top Countries, Job Titles, and Lead Sources.
 *   **AI Campaign Ideas:** Generate personalized cold outreach campaign strategies automatically based on your current lead pool demographics.
+<img width="1919" height="703" alt="image" src="https://github.com/user-attachments/assets/5b94f9fb-fcbe-46a8-9a02-7531f1d0d609" />
+
 
 ---
 
-## 🛠️ Technology Stack
+## B) Technology Stack
 
 *   **Frontend:** React 18, TypeScript, Vite, `lucide-react` (icons), `@xyflow/react` (node canvas), `react-markdown` (AI output).
 *   **Backend:** Python 3, FastAPI, SQLite (SQLAlchemy ORM), Pandas (analytics), OpenAI API (gpt-4o-mini).
 
 ---
 
-## 💻 Local Setup & Installation
+## C) Local Setup & Installation
 
 ### Prerequisites
 *   Node.js (v18+)
@@ -88,7 +95,7 @@ Manage your contacts and gain high-level demographic insights.
 
 ---
 
-## 📖 How to Use the App (Workflow Guide)
+## D) How to Use the App (Workflow Guide)
 
 **Step 1: Set the Context**
 Navigate to the **Knowledge Base** page. Upload a company document or write a short description of your product. Click "Extract with AI", review the 5 generated parameters, and click **Save**. This context will be used by all AI nodes.
@@ -107,7 +114,8 @@ Navigate to the **Workflow Builder**.
 
 ---
 
-## ✨ What's New in Version 2.0.0
+
+## ✨ What's New in Version 0.2.0
 
 The "Workflow & Intelligence" update brings massive agentic capabilities:
 
