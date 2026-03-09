@@ -21,7 +21,6 @@ A powerful, React Flow-powered drag-and-drop canvas to build branching outreach 
 *   **Simulation Engine:** Test your workflows instantly using AI-simulated personas (e.g., "Skeptical CTO" or "Busy Founder") to see how your sequence performs before going live.
 *   **State Persistence:** Save, load, update, and manage multiple unique workflows in the database.
 <img width="1919" height="865" alt="image" src="https://github.com/user-attachments/assets/fe905203-4a3b-4397-a51b-8a56138d7acc" />
-<img width="1919" height="859" alt="image" src="https://github.com/user-attachments/assets/d355c116-3f09-4607-82fc-ff1174b9c6f3" />
 
 
 ### 3. 🎯 Lead Intelligence
@@ -120,6 +119,7 @@ Navigate to the **Workflow Builder**.
 The "Workflow & Intelligence" update brings massive agentic capabilities:
 
 1.  **AI Workflow Designer:** No more manual dragging. Describe your campaign goal in plain English (e.g., *"Build a 3-step reactivation sequence for inactive customers"*), and the AI will automatically construct the entire node-graph for you.
+<img width="1919" height="859" alt="image" src="https://github.com/user-attachments/assets/d355c116-3f09-4607-82fc-ff1174b9c6f3" />
 2.  **A/B Testing Hub:** Split-test your outreach messaging. Define two different prompt variants, run them against your workflows, and receive a side-by-side **AI Verdict** on which approach is more effective for conversion.
 3.  **Real Data Integration:** Workflows now pull live data from your **Lead Database**. The "Load Lead" node features a dynamic picker to test sequences on actual contacts.
 4.  **Markdown Powered Outputs:** All AI-generated campaigns and A/B test verdicts now render in rich Markdown for better readability.
